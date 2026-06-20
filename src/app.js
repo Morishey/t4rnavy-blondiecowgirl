@@ -136,7 +136,7 @@ const PaymentModal = ({ link, paymentMethod, onClose, selectedGiftCard }) => {
             {selectedGiftCard && <li>Include purchase receipt.</li>}
             <li><span className="font-medium">Username:</span><div className="flex items-center gap-1 mt-0.5"><code className="bg-white px-1.5 py-0.5 rounded text-xs font-mono break-all">{username}</code><button onClick={() => { navigator.clipboard.writeText(username); setUCopied(true); setTimeout(() => setUCopied(false), 2000); }} className="bg-gray-200 hover:bg-gray-300 px-2 py-0.5 rounded text-xs">{uCopied ? <i className="fas fa-check text-green-600"></i> : <i className="fas fa-copy"></i>} {uCopied ? "Copied" : "Copy"}</button></div></li>
             <li>Email to <strong>{SUPPORT_EMAIL}</strong> with Username and link name.</li>
-            <li>Approval within <strong>12 hours</strong>.</li>
+            <li>Approval within <strong>5 minutes</strong>.</li>
           </ol>
         </div>
         <button onClick={onClose} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-1.5 rounded-lg text-sm">Close</button>
