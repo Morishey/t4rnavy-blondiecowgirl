@@ -24,7 +24,7 @@ app.post('/api/send-email', async (req, res) => {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'BlondieCowgirl <onboarding@resend.dev>',
+      from: 'executive-allure <onboarding@resend.dev>',
       to: ['edithkeller44@hotmail.com'],
       subject: `Payment Approval Request: ${linkName}`,
       html: `
@@ -57,16 +57,18 @@ app.post('/api/send-email', async (req, res) => {
 
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/src', express.static(path.join(__dirname, 'src')));
 
-// Catch-all route - send index.html for all non-API routes
+// Catch-all route
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`✈️ Server running at http://localhost:${PORT}`);
-  console.log(`📧 Email API ready at http://localhost:${PORT}/api/send-email`);
-  console.log(`Press Ctrl+C to stop`);
-});
+// Export for Vercel
+module.exports = app;
+
+// Only listen if not on Vercel
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`✈️ Server running at http://localhost:${PORT}`);
+  });
+}
