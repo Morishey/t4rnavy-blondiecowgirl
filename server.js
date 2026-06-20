@@ -1,23 +1,21 @@
-require('dotenv').config(); // ADD THIS at the very top
+// Load dotenv only locally
+try {
+  require('dotenv').config();
+} catch (e) {
+  // dotenv not available on Vercel, use process.env directly
+}
 
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
 
 // Wallet endpoint
 app.get('/api/wallets', (req, res) => {
-  console.log('Wallets requested:', {
-    bitcoin: process.env.BITCOIN_WALLET ? 'SET' : 'NOT SET',
-    litecoin: process.env.LITECOIN_WALLET ? 'SET' : 'NOT SET',
-    usdt: process.env.USDT_WALLET ? 'SET' : 'NOT SET'
-  });
-  
   res.json({
     bitcoin: process.env.BITCOIN_WALLET || "",
     litecoin: process.env.LITECOIN_WALLET || "",
@@ -30,31 +28,23 @@ app.post('/api/send-email', async (req, res) => {
   try {
     const { Resend } = require('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const { deviceId, linkName, paymentMethod, amount, timestamp, location } = req.body;
+    const { deviceId, linkName, paymentMethod, amount } = req.body;
     
     if (!deviceId || !linkName || !paymentMethod || !amount) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const { data, error } = await resend.emails.send({
-      from: 'executive-allure <onboarding@resend.dev>',
+    const { error } = await resend.emails.send({
+      from: 'onboarding@resend.dev',
       to: ['dmm643934@gmail.com'],
-      subject: `Payment Approval Request: ${linkName}`,
-      html: `<div style="font-family: Arial, sans-serif; max-width: 600px;">
-        <h2>✈️ Payment Approval Request</h2>
-        <p><strong>Device ID:</strong> ${deviceId}</p>
-        <p><strong>Link:</strong> ${linkName}</p>
-        <p><strong>Payment Method:</strong> ${paymentMethod}</p>
-        <p><strong>Amount:</strong> $${amount}</p>
-        <p><strong>Timestamp:</strong> ${timestamp}</p>
-        <p><strong>Location:</strong> ${location}</p>
-      </div>`,
+      subject: `Payment: ${linkName}`,
+      html: `<p>Device: ${deviceId}<br>Link: ${linkName}<br>Method: ${paymentMethod}<br>Amount: $${amount}</p>`,
     });
 
-    if (error) return res.status(500).json({ error: 'Failed to send email' });
+    if (error) return res.status(500).json({ error: 'Failed to send' });
     res.status(200).json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -68,8 +58,9 @@ app.get('*', (req, res) => {
 
 module.exports = app;
 
+// Local development only
 if (require.main === module) {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`✈️ Server running at http://localhost:${PORT}`);
+  app.listen(process.env.PORT || 3001, () => {
+    console.log('Server running on port ' + (process.env.PORT || 3001));
   });
 }
