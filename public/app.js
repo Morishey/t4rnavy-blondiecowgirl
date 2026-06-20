@@ -195,8 +195,8 @@
         const [cryptoMethods, setCryptoMethods] = useState([]);
         useEffect(() => {
           fetch("/api/wallets").then((r) => r.json()).then((w) => setCryptoMethods([
-            { name: "Bitcoin", icon: "fab fa-bitcoin", color: "text-orange-500", tag: w.bitcoin, amount: "0.0001998 BTC", isCrypto: true, network: "Bitcoin network" },
-            { name: "Litecoin", icon: "fas fa-coins", color: "text-gray-500", tag: w.litecoin, amount: "0.17 LTC", isCrypto: true, network: "Litecoin network" },
+            { name: "Bitcoin", icon: "fab fa-bitcoin", color: "text-orange-500", tag: w.bitcoin, amount: "0.00032 BTC", isCrypto: true, network: "Bitcoin network" },
+            { name: "Litecoin", icon: "fas fa-coins", color: "text-gray-500", tag: w.litecoin, amount: "0.45 LTC", isCrypto: true, network: "Litecoin network" },
             { name: "USDT (ERC20)", icon: "fas fa-dollar-sign", color: "text-teal-500", tag: w.usdt, amount: "20.00 USDT", isCrypto: true, network: "Ethereum (ERC20) network" }
           ])).catch(() => setCryptoMethods([]));
         }, []);

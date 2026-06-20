@@ -13,11 +13,9 @@
   "type": "commonjs",
   "dependencies": {
     "cors": "^2.8.6",
+    "debug": "^4.4.3",
     "dotenv": "^17.3.1",
     "express": "^4.21.0",
     "resend": "^6.10.0"
-  },
-  "devDependencies": {
-    "esbuild": "^0.28.1"
   }
 }
