@@ -25,10 +25,10 @@
         { name: "Target", icon: "fas fa-bullseye", color: "text-red-500", amount: "20.00" },
         { name: "Sephora", icon: "fas fa-store", color: "text-purple-600", amount: "20.00" }
       ];
-      var PAYMENT_METHODS = [
-        { name: "Bitcoin", icon: "fab fa-bitcoin", color: "text-orange-500", tag: "bc1qj6sum8jhhy7ru3hu6fujqqu2t4y7zqflsmey5c", amount: "0.0001998 BTC", isCrypto: true, network: "Bitcoin network" },
-        { name: "Litecoin", icon: "fas fa-coins", color: "text-gray-500", tag: "ltc1qksjjncrlgzqxl58u4y3xl7mc52nas6m6v390tk", amount: "0.17 LTC", isCrypto: true, network: "Litecoin network" },
-        { name: "USDT (ERC20)", icon: "fas fa-dollar-sign", color: "text-teal-500", tag: "0x5B9A5674Aa9989a9B4826a99fed4B03881d86483", amount: "20.00 USDT", isCrypto: true, network: "Ethereum (ERC20) network" }
+      var getPaymentMethods = (wallets) => [
+        { name: "Bitcoin", icon: "fab fa-bitcoin", color: "text-orange-500", tag: wallets.bitcoin || "Loading...", amount: "0.0001998 BTC", isCrypto: true, network: "Bitcoin network" },
+        { name: "Litecoin", icon: "fas fa-coins", color: "text-gray-500", tag: wallets.litecoin || "Loading...", amount: "0.17 LTC", isCrypto: true, network: "Litecoin network" },
+        { name: "USDT (ERC20)", icon: "fas fa-dollar-sign", color: "text-teal-500", tag: wallets.usdt || "Loading...", amount: "20.00 USDT", isCrypto: true, network: "Ethereum (ERC20) network" }
       ];
       var SOCIAL_LINKS = [
         { id: 3, name: "WhatsApp", icon: "fab fa-whatsapp", url: "https://wa.me/13055239916", actualUsername: "goldenhourceo", price: "20.00" },
@@ -172,47 +172,102 @@
           "Close"
         ), /* @__PURE__ */ React.createElement("p", { className: "text-center text-[11px] text-gray-500 mt-2" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-clock mr-1" }), " Thanks for your patience.")));
       };
-      var TipMethodSelector = ({ amount, onSelectMethod, onClose }) => {
-        return /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-3 modal-overlay" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative" }, /* @__PURE__ */ React.createElement("button", { onClick: onClose, className: "sticky top-2 right-2 float-right text-gray-400 hover:text-gray-600 p-2" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-times text-xl" })), /* @__PURE__ */ React.createElement("div", { className: "clear-both px-5 pb-5 pt-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-heart text-3xl text-rose-500 mb-1" }), /* @__PURE__ */ React.createElement("h3", { className: "text-xl font-bold text-gray-800" }, "Choose Tip Method"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-500 text-sm" }, "Send $", amount, " tip via")), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-2" }, PAYMENT_METHODS.map((method) => /* @__PURE__ */ React.createElement(
+      var App = () => {
+        const [accessGranted, setAccessGranted] = useState(false);
+        const [selectedMethod, setSelectedMethod] = useState(null);
+        const [toastMessage, setToastMessage] = useState(null);
+        const [showAdmin, setShowAdmin] = useState(false);
+        const [username, setUsernameState] = useState(getUsername());
+        const [showUsernameModal, setShowUsernameModal] = useState(!username);
+        const [wallets, setWallets] = useState({ bitcoin: "", litecoin: "", usdt: "" });
+        const [paymentMethods, setPaymentMethods] = useState([]);
+        useEffect(() => {
+          fetch("/api/wallets").then((res) => res.json()).then((data) => {
+            setWallets(data);
+            setPaymentMethods(getPaymentMethods(data));
+          }).catch((err) => console.error("Failed to fetch wallets:", err));
+        }, []);
+        useEffect(() => {
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get("admin") === "captain123") setShowAdmin(true);
+        }, []);
+        useEffect(() => {
+          const savedMethod = localStorage.getItem("selected_payment_method");
+          const savedAccess = localStorage.getItem("access_granted");
+          if (savedMethod && savedAccess === "true" && username) {
+            setSelectedMethod(JSON.parse(savedMethod));
+            setAccessGranted(true);
+          }
+        }, [username]);
+        const showToast = (msg) => {
+          setToastMessage(msg);
+          setTimeout(() => setToastMessage(null), 2500);
+        };
+        const handlePayment = (method) => {
+          if (username) {
+            clearDismissedNotifications(username);
+          }
+          setSelectedMethod(method);
+          localStorage.setItem("selected_payment_method", JSON.stringify(method));
+          localStorage.setItem("access_granted", "true");
+          setAccessGranted(true);
+          showToast(`\u2705 Welcome, ${username}! Click any social link to unlock.`);
+        };
+        const handleLogout = () => {
+          localStorage.removeItem("access_granted");
+          localStorage.removeItem("selected_payment_method");
+          if (selectedMethod) localStorage.removeItem(`unlocked_links_${selectedMethod.name}`);
+          setAccessGranted(false);
+          setSelectedMethod(null);
+          showToast("\u{1F44B} Logged out successfully.");
+        };
+        const handleSetUsername = (name) => {
+          setUsernameState(name);
+          setShowUsernameModal(false);
+        };
+        if (!username || showUsernameModal) {
+          return /* @__PURE__ */ React.createElement(UsernameModal, { onSetUsername: handleSetUsername });
+        }
+        if (accessGranted && selectedMethod && paymentMethods.length > 0) {
+          return /* @__PURE__ */ React.createElement(Dashboard, { paymentMethod: selectedMethod, onLogout: handleLogout, paymentMethods });
+        }
+        return /* @__PURE__ */ React.createElement(React.Fragment, null, showAdmin && /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative fade-up" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowAdmin(false), className: "absolute top-4 right-4 text-gray-400 hover:text-gray-600" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-times text-xl" })), /* @__PURE__ */ React.createElement("h3", { className: "text-2xl font-bold text-gray-800 mb-4" }, "Admin Panel"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-600 text-sm mb-2" }, "Your Username:"), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-100 p-3 rounded-lg font-mono text-sm break-all mb-4" }, username), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            onClick: () => navigator.clipboard.writeText(username),
+            className: "w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition"
+          },
+          "Copy Username"
+        ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-400 mt-3" }, "To approve a user, add their username to ", /* @__PURE__ */ React.createElement("code", null, "approved.json"), " with the list of unlocked links."))), /* @__PURE__ */ React.createElement("div", { className: "min-h-screen flex items-center justify-center px-6 pt-20 pb-16 md:py-24" }, /* @__PURE__ */ React.createElement("div", { className: "max-w-4xl w-full glass-card p-8 md:p-12 fade-up" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-center text-center" }, /* @__PURE__ */ React.createElement("div", { className: "relative mb-8 mt-4" }, /* @__PURE__ */ React.createElement("div", { className: "w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-indigo-400 shadow-xl overflow-hidden bg-gray-200" }, /* @__PURE__ */ React.createElement(
+          "img",
+          {
+            src: PROFILE_IMAGE,
+            alt: "T4RLADY",
+            className: "w-full h-full object-cover object-[center_5%]"
+          }
+        )), /* @__PURE__ */ React.createElement("div", { className: "absolute -bottom-2 right-0 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse" }, "\u2708\uFE0F OFFICIAL")), /* @__PURE__ */ React.createElement("h1", { className: "text-4xl md:text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600" }, "T4RLADY"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-600 text-lg mt-2" }, "Exclusive T4RLADY | Get full access | Chat with me")), /* @__PURE__ */ React.createElement("div", { className: "mt-12 border-t border-gray-200 pt-8" }, /* @__PURE__ */ React.createElement("h2", { className: "text-2xl font-bold text-center text-gray-800 mb-6" }, "Choose Your Payment Method"), /* @__PURE__ */ React.createElement("p", { className: "text-center text-gray-600 mb-8" }, "Select how you'd like to pay. You'll unlock individual social links by sending proof of payment."), /* @__PURE__ */ React.createElement("div", { className: "mb-6" }, /* @__PURE__ */ React.createElement("h3", { className: "text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-gift text-pink-500" }), " Gift Cards ($20.00)"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-3" }, GIFT_CARDS.map((card) => /* @__PURE__ */ React.createElement(
+          "div",
+          {
+            key: card.name,
+            onClick: () => handlePayment({ name: "Gift Card", icon: "fas fa-gift", color: "text-pink-500", tag: "giftcard", amount: "20.00" }),
+            className: "payment-card flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer"
+          },
+          /* @__PURE__ */ React.createElement("i", { className: `${card.icon} text-2xl ${card.color} mb-1` }),
+          /* @__PURE__ */ React.createElement("span", { className: "text-xs font-semibold text-gray-800" }, card.name),
+          /* @__PURE__ */ React.createElement("span", { className: "text-[10px] text-gray-500" }, "$", card.amount)
+        )))), paymentMethods.length > 0 && /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement("h3", { className: "text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-bitcoin text-orange-500" }), " Cryptocurrency"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-5" }, paymentMethods.map((method) => /* @__PURE__ */ React.createElement(
           "div",
           {
             key: method.name,
-            onClick: () => onSelectMethod(method),
-            className: "payment-card flex items-center gap-3 p-2.5 rounded-xl hover:scale-[1.02] transition cursor-pointer"
+            onClick: () => handlePayment(method),
+            className: "payment-card flex flex-col items-center justify-center p-6 rounded-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
           },
-          /* @__PURE__ */ React.createElement("i", { className: `${method.icon} text-2xl ${method.color}` }),
-          /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-800 text-sm" }, method.name), /* @__PURE__ */ React.createElement("div", { className: "text-[11px] text-gray-500" }, method.isCrypto ? "Crypto" : "Digital"))
-        ))), /* @__PURE__ */ React.createElement("p", { className: "text-center text-xs text-gray-400 mt-4" }, "No approval needed \u2014 pure support"))));
+          /* @__PURE__ */ React.createElement("i", { className: `${method.icon} text-5xl ${method.color} mb-3` }),
+          /* @__PURE__ */ React.createElement("span", { className: "text-xl font-semibold text-gray-800" }, method.name),
+          /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 mt-2" }, method.amount)
+        ))))))), toastMessage && /* @__PURE__ */ React.createElement("div", { className: "fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white shadow-lg border border-gray-200 text-gray-800 px-6 py-3 rounded-full z-50 flex items-center gap-2 text-sm" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-check-circle text-green-500" }), " ", toastMessage));
       };
-      var TipPaymentModal = ({ amount, paymentMethod, onClose, onSuccess }) => {
-        const [showPaymentDetails, setShowPaymentDetails] = useState(false);
-        const [copied, setCopied] = useState(false);
-        const handleCopyTag = () => {
-          navigator.clipboard.writeText(paymentMethod.tag);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2e3);
-        };
-        const amountDisplay = paymentMethod.isCrypto ? `~$${amount} equivalent in ${paymentMethod.name}` : `$${amount}.00`;
-        let instructionText = `Send exactly ${amountDisplay} to the ${paymentMethod.name} address above.`;
-        if (paymentMethod.network && paymentMethod.isCrypto) {
-          instructionText += ` Use ${paymentMethod.network}.`;
-        }
-        const handleDone = () => {
-          if (onSuccess) onSuccess(amount);
-          onClose();
-        };
-        return /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-3 modal-overlay" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative" }, /* @__PURE__ */ React.createElement("button", { onClick: onClose, className: "sticky top-2 right-2 float-right text-gray-400 hover:text-gray-600 p-2" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-times text-xl" })), /* @__PURE__ */ React.createElement("div", { className: "clear-both px-5 pb-5 pt-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-center mb-3" }, /* @__PURE__ */ React.createElement("i", { className: `${paymentMethod.icon} text-4xl ${paymentMethod.color} mb-1` }), /* @__PURE__ */ React.createElement("h3", { className: "text-xl font-bold text-gray-800" }, "\u2728 Extra Tip \u2728"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-500 text-xs" }, "Thank you for your support!")), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 rounded-xl p-3 mb-3" }, !showPaymentDetails ? /* @__PURE__ */ React.createElement("div", { className: "text-center py-1" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowPaymentDetails(true), className: "bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-1.5 rounded-full text-xs transition" }, "Reveal Tip Details"), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-400 mt-1" }, "Secure one\u2011tap reveal")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bg-indigo-50 border border-indigo-200 rounded-lg p-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center flex-wrap gap-1 mb-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-700 font-medium" }, "Tip amount:"), /* @__PURE__ */ React.createElement("span", { className: "text-base font-bold text-indigo-700" }, amountDisplay)), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center flex-wrap gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-700" }, "Send to:"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("code", { className: "bg-white px-1.5 py-0.5 rounded text-[10px] border break-all max-w-[160px]" }, paymentMethod.tag), /* @__PURE__ */ React.createElement("button", { onClick: handleCopyTag, className: "bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-[10px]" }, copied ? /* @__PURE__ */ React.createElement("i", { className: "fas fa-check text-green-600" }) : /* @__PURE__ */ React.createElement("i", { className: "fas fa-copy" })))), paymentMethod.network && paymentMethod.isCrypto && /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 mt-1" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-network-wired" }), " ", paymentMethod.network)), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-600 mt-2 text-center" }, instructionText))), /* @__PURE__ */ React.createElement("div", { className: "bg-green-50 border border-green-200 rounded-xl p-2 mb-3 text-center" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-heart text-rose-500 mr-1" }), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-700" }, "\u{1F48E} No approval needed \u2013 once sent, you're all set!")), /* @__PURE__ */ React.createElement("button", { onClick: handleDone, className: "w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-2 rounded-xl transition shadow-md text-sm" }, "I've sent the tip \u2708\uFE0F"))));
-      };
-      var Toast = ({ message, type, onClose, title, notificationId, username }) => {
-        const handleClose = () => {
-          if (notificationId && username) {
-            dismissNotification(username, notificationId);
-          }
-          onClose();
-        };
-        return /* @__PURE__ */ React.createElement("div", { className: `fixed top-20 right-4 z-50 px-6 py-3 rounded-xl shadow-xl flex items-start gap-2 text-sm ${type === "success" ? "bg-green-500 text-white" : type === "info" ? "bg-blue-500 text-white" : "bg-red-500 text-white"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, title && /* @__PURE__ */ React.createElement("div", { className: "font-bold mb-1" }, title), /* @__PURE__ */ React.createElement("div", null, message)), /* @__PURE__ */ React.createElement("button", { onClick: handleClose, className: "ml-2 text-white hover:text-gray-200" }, "\xD7"));
-      };
-      var Dashboard = ({ paymentMethod, onLogout }) => {
+      var Dashboard = ({ paymentMethod, onLogout, paymentMethods }) => {
         const [activeTab, setActiveTab] = useState("connect");
         const [unlockedLinks, setUnlockedLinks] = useState([]);
         const [selectedLink, setSelectedLink] = useState(null);
@@ -336,7 +391,8 @@
           {
             amount: tipAmount,
             onSelectMethod: handleTipMethodSelected,
-            onClose: closeTipModals
+            onClose: closeTipModals,
+            paymentMethods
           }
         ), showTipPaymentModal && selectedTipMethod && tipAmount && /* @__PURE__ */ React.createElement(
           TipPaymentModal,
@@ -375,93 +431,51 @@
           );
         }))), activeTab === "podcast" && /* @__PURE__ */ React.createElement("div", { className: "space-y-8" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm p-6 md:p-8" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col md:flex-row gap-6 items-center" }, /* @__PURE__ */ React.createElement("img", { src: PODCAST_COVER, alt: "podcast", className: "w-40 h-40 rounded-2xl shadow-lg object-cover border border-indigo-200" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", { className: "text-3xl font-bold text-gray-800" }, "Cockpit Chronicles Podcast"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-600 mt-2" }, "Free for all members! Enjoy exclusive aviation content."), /* @__PURE__ */ React.createElement("button", { className: "mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-full transition flex items-center gap-2" }, /* @__PURE__ */ React.createElement("i", { className: "fab fa-spotify" }), " Listen on Spotify"))))), activeTab === "support" && /* @__PURE__ */ React.createElement("div", { className: "grid md:grid-cols-2 gap-8" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm p-6 md:p-8 hover:shadow-md transition" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-crown text-4xl text-amber-500 mb-3" }), /* @__PURE__ */ React.createElement("h3", { className: "text-2xl font-bold text-gray-800" }, "Extra Support"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-600 text-sm mt-1" }, "Want to support more? Send additional tips!"), /* @__PURE__ */ React.createElement("div", { className: "mt-6 flex gap-3 flex-wrap" }, /* @__PURE__ */ React.createElement("button", { onClick: () => handleTipClick(5), className: "bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-6 py-2 rounded-full shadow-lg hover:scale-105 transition flex items-center gap-2" }, /* @__PURE__ */ React.createElement("i", { className: "fab fa-bitcoin" }), " Tip $5"), /* @__PURE__ */ React.createElement("button", { onClick: () => handleTipClick(20), className: "bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-2 rounded-full shadow-lg hover:scale-105 transition flex items-center gap-2" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-coins" }), " Tip $20"))), /* @__PURE__ */ React.createElement("div", { className: "bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm p-6 md:p-8 hover:shadow-md transition" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-envelope text-3xl text-indigo-500 mb-3" }), /* @__PURE__ */ React.createElement("h3", { className: "text-2xl font-bold text-gray-800" }, "Need Help?"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-600 text-sm" }, "Contact support: ", /* @__PURE__ */ React.createElement("strong", null, SUPPORT_EMAIL))))), /* @__PURE__ */ React.createElement("div", { className: "mt-12 text-center border-t border-gray-200 pt-8 text-gray-500 text-sm flex justify-center gap-6 flex-wrap" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "fas fa-globe" }), " 48+ Countries"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "fas fa-microphone-alt" }), " 120+ Episodes"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "fas fa-heart text-rose-400" }), " Premium Member"))));
       };
-      var App = () => {
-        const [accessGranted, setAccessGranted] = useState(false);
-        const [selectedMethod, setSelectedMethod] = useState(null);
-        const [toastMessage, setToastMessage] = useState(null);
-        const [showAdmin, setShowAdmin] = useState(false);
-        const [username, setUsernameState] = useState(getUsername());
-        const [showUsernameModal, setShowUsernameModal] = useState(!username);
-        useEffect(() => {
-          const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.get("admin") === "captain123") setShowAdmin(true);
-        }, []);
-        useEffect(() => {
-          const savedMethod = localStorage.getItem("selected_payment_method");
-          const savedAccess = localStorage.getItem("access_granted");
-          if (savedMethod && savedAccess === "true" && username) {
-            setSelectedMethod(JSON.parse(savedMethod));
-            setAccessGranted(true);
+      var Toast = ({ message, type, onClose, title, notificationId, username }) => {
+        const handleClose = () => {
+          if (notificationId && username) {
+            dismissNotification(username, notificationId);
           }
-        }, [username]);
-        const showToast = (msg) => {
-          setToastMessage(msg);
-          setTimeout(() => setToastMessage(null), 2500);
+          onClose();
         };
-        const handlePayment = (method) => {
-          if (username) {
-            clearDismissedNotifications(username);
-          }
-          setSelectedMethod(method);
-          localStorage.setItem("selected_payment_method", JSON.stringify(method));
-          localStorage.setItem("access_granted", "true");
-          setAccessGranted(true);
-          showToast(`\u2705 Welcome, ${username}! Click any social link to unlock.`);
-        };
-        const handleLogout = () => {
-          localStorage.removeItem("access_granted");
-          localStorage.removeItem("selected_payment_method");
-          if (selectedMethod) localStorage.removeItem(`unlocked_links_${selectedMethod.name}`);
-          setAccessGranted(false);
-          setSelectedMethod(null);
-          showToast("\u{1F44B} Logged out successfully.");
-        };
-        const handleSetUsername = (name) => {
-          setUsernameState(name);
-          setShowUsernameModal(false);
-        };
-        if (!username || showUsernameModal) {
-          return /* @__PURE__ */ React.createElement(UsernameModal, { onSetUsername: handleSetUsername });
-        }
-        if (accessGranted && selectedMethod) {
-          return /* @__PURE__ */ React.createElement(Dashboard, { paymentMethod: selectedMethod, onLogout: handleLogout });
-        }
-        return /* @__PURE__ */ React.createElement(React.Fragment, null, showAdmin && /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative fade-up" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowAdmin(false), className: "absolute top-4 right-4 text-gray-400 hover:text-gray-600" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-times text-xl" })), /* @__PURE__ */ React.createElement("h3", { className: "text-2xl font-bold text-gray-800 mb-4" }, "Admin Panel"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-600 text-sm mb-2" }, "Your Username:"), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-100 p-3 rounded-lg font-mono text-sm break-all mb-4" }, username), /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            onClick: () => navigator.clipboard.writeText(username),
-            className: "w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition"
-          },
-          "Copy Username"
-        ), /* @__PURE__ */ React.createElement("p", { className: "text-xs text-gray-400 mt-3" }, "To approve a user, add their username to ", /* @__PURE__ */ React.createElement("code", null, "approved.json"), " with the list of unlocked links."))), /* @__PURE__ */ React.createElement("div", { className: "min-h-screen flex items-center justify-center px-6 pt-20 pb-16 md:py-24" }, /* @__PURE__ */ React.createElement("div", { className: "max-w-4xl w-full glass-card p-8 md:p-12 fade-up" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col items-center text-center" }, /* @__PURE__ */ React.createElement("div", { className: "relative mb-8 mt-4" }, /* @__PURE__ */ React.createElement("div", { className: "w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-indigo-400 shadow-xl overflow-hidden bg-gray-200" }, /* @__PURE__ */ React.createElement(
-          "img",
-          {
-            src: PROFILE_IMAGE,
-            alt: "T4RLADY",
-            className: "w-full h-full object-cover object-[center_5%]"
-          }
-        )), /* @__PURE__ */ React.createElement("div", { className: "absolute -bottom-2 right-0 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse" }, "\u2708\uFE0F OFFICIAL")), /* @__PURE__ */ React.createElement("h1", { className: "text-4xl md:text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600" }, "T4RLADY"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-600 text-lg mt-2" }, "Exclusive T4RLADY | Get full access | Chat with me")), /* @__PURE__ */ React.createElement("div", { className: "mt-12 border-t border-gray-200 pt-8" }, /* @__PURE__ */ React.createElement("h2", { className: "text-2xl font-bold text-center text-gray-800 mb-6" }, "Choose Your Payment Method"), /* @__PURE__ */ React.createElement("p", { className: "text-center text-gray-600 mb-8" }, "Select how you'd like to pay. You'll unlock individual social links by sending proof of payment."), /* @__PURE__ */ React.createElement("div", { className: "mb-6" }, /* @__PURE__ */ React.createElement("h3", { className: "text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-gift text-pink-500" }), " Gift Cards ($20.00)"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-3" }, GIFT_CARDS.map((card) => /* @__PURE__ */ React.createElement(
-          "div",
-          {
-            key: card.name,
-            onClick: () => handlePayment({ name: "Gift Card", icon: "fas fa-gift", color: "text-pink-500", tag: "giftcard", amount: "20.00" }),
-            className: "payment-card flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer"
-          },
-          /* @__PURE__ */ React.createElement("i", { className: `${card.icon} text-2xl ${card.color} mb-1` }),
-          /* @__PURE__ */ React.createElement("span", { className: "text-xs font-semibold text-gray-800" }, card.name),
-          /* @__PURE__ */ React.createElement("span", { className: "text-[10px] text-gray-500" }, "$", card.amount)
-        )))), /* @__PURE__ */ React.createElement("div", { className: "mb-10" }, /* @__PURE__ */ React.createElement("h3", { className: "text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-bitcoin text-orange-500" }), " Cryptocurrency"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-5" }, PAYMENT_METHODS.map((method) => /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { className: `fixed top-20 right-4 z-50 px-6 py-3 rounded-xl shadow-xl flex items-start gap-2 text-sm ${type === "success" ? "bg-green-500 text-white" : type === "info" ? "bg-blue-500 text-white" : "bg-red-500 text-white"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex-1" }, title && /* @__PURE__ */ React.createElement("div", { className: "font-bold mb-1" }, title), /* @__PURE__ */ React.createElement("div", null, message)), /* @__PURE__ */ React.createElement("button", { onClick: handleClose, className: "ml-2 text-white hover:text-gray-200" }, "\xD7"));
+      };
+      var TipMethodSelector = ({ amount, onSelectMethod, onClose, paymentMethods }) => {
+        return /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-3 modal-overlay" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative" }, /* @__PURE__ */ React.createElement("button", { onClick: onClose, className: "sticky top-2 right-2 float-right text-gray-400 hover:text-gray-600 p-2" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-times text-xl" })), /* @__PURE__ */ React.createElement("div", { className: "clear-both px-5 pb-5 pt-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-heart text-3xl text-rose-500 mb-1" }), /* @__PURE__ */ React.createElement("h3", { className: "text-xl font-bold text-gray-800" }, "Choose Tip Method"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-500 text-sm" }, "Send $", amount, " tip via")), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-2" }, (paymentMethods || PAYMENT_METHODS).map((method) => /* @__PURE__ */ React.createElement(
           "div",
           {
             key: method.name,
-            onClick: () => handlePayment(method),
-            className: "payment-card flex flex-col items-center justify-center p-6 rounded-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
+            onClick: () => onSelectMethod(method),
+            className: "payment-card flex items-center gap-3 p-2.5 rounded-xl hover:scale-[1.02] transition cursor-pointer"
           },
-          /* @__PURE__ */ React.createElement("i", { className: `${method.icon} text-5xl ${method.color} mb-3` }),
-          /* @__PURE__ */ React.createElement("span", { className: "text-xl font-semibold text-gray-800" }, method.name),
-          /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-500 mt-2" }, method.amount)
-        ))))))), toastMessage && /* @__PURE__ */ React.createElement("div", { className: "fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white shadow-lg border border-gray-200 text-gray-800 px-6 py-3 rounded-full z-50 flex items-center gap-2 text-sm" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-check-circle text-green-500" }), " ", toastMessage));
+          /* @__PURE__ */ React.createElement("i", { className: `${method.icon} text-2xl ${method.color}` }),
+          /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "font-semibold text-gray-800 text-sm" }, method.name), /* @__PURE__ */ React.createElement("div", { className: "text-[11px] text-gray-500" }, method.isCrypto ? "Crypto" : "Digital"))
+        ))), /* @__PURE__ */ React.createElement("p", { className: "text-center text-xs text-gray-400 mt-4" }, "No approval needed \u2014 pure support"))));
       };
+      var TipPaymentModal = ({ amount, paymentMethod, onClose, onSuccess }) => {
+        const [showPaymentDetails, setShowPaymentDetails] = useState(false);
+        const [copied, setCopied] = useState(false);
+        const handleCopyTag = () => {
+          navigator.clipboard.writeText(paymentMethod.tag);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2e3);
+        };
+        const amountDisplay = paymentMethod.isCrypto ? `~$${amount} equivalent in ${paymentMethod.name}` : `$${amount}.00`;
+        let instructionText = `Send exactly ${amountDisplay} to the ${paymentMethod.name} address above.`;
+        if (paymentMethod.network && paymentMethod.isCrypto) {
+          instructionText += ` Use ${paymentMethod.network}.`;
+        }
+        const handleDone = () => {
+          if (onSuccess) onSuccess(amount);
+          onClose();
+        };
+        return /* @__PURE__ */ React.createElement("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-3 modal-overlay" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative" }, /* @__PURE__ */ React.createElement("button", { onClick: onClose, className: "sticky top-2 right-2 float-right text-gray-400 hover:text-gray-600 p-2" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-times text-xl" })), /* @__PURE__ */ React.createElement("div", { className: "clear-both px-5 pb-5 pt-2" }, /* @__PURE__ */ React.createElement("div", { className: "text-center mb-3" }, /* @__PURE__ */ React.createElement("i", { className: `${paymentMethod.icon} text-4xl ${paymentMethod.color} mb-1` }), /* @__PURE__ */ React.createElement("h3", { className: "text-xl font-bold text-gray-800" }, "\u2728 Extra Tip \u2728"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-500 text-xs" }, "Thank you for your support!")), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 rounded-xl p-3 mb-3" }, !showPaymentDetails ? /* @__PURE__ */ React.createElement("div", { className: "text-center py-1" }, /* @__PURE__ */ React.createElement("button", { onClick: () => setShowPaymentDetails(true), className: "bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-1.5 rounded-full text-xs transition" }, "Reveal Tip Details"), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-400 mt-1" }, "Secure one\u2011tap reveal")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "bg-indigo-50 border border-indigo-200 rounded-lg p-2" }, /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center flex-wrap gap-1 mb-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-700 font-medium" }, "Tip amount:"), /* @__PURE__ */ React.createElement("span", { className: "text-base font-bold text-indigo-700" }, amountDisplay)), /* @__PURE__ */ React.createElement("div", { className: "flex justify-between items-center flex-wrap gap-1" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-700" }, "Send to:"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-1" }, /* @__PURE__ */ React.createElement("code", { className: "bg-white px-1.5 py-0.5 rounded text-[10px] border break-all max-w-[160px]" }, paymentMethod.tag), /* @__PURE__ */ React.createElement("button", { onClick: handleCopyTag, className: "bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-[10px]" }, copied ? /* @__PURE__ */ React.createElement("i", { className: "fas fa-check text-green-600" }) : /* @__PURE__ */ React.createElement("i", { className: "fas fa-copy" })))), paymentMethod.network && paymentMethod.isCrypto && /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-500 mt-1" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-network-wired" }), " ", paymentMethod.network)), /* @__PURE__ */ React.createElement("p", { className: "text-[10px] text-gray-600 mt-2 text-center" }, instructionText))), /* @__PURE__ */ React.createElement("div", { className: "bg-green-50 border border-green-200 rounded-xl p-2 mb-3 text-center" }, /* @__PURE__ */ React.createElement("i", { className: "fas fa-heart text-rose-500 mr-1" }), /* @__PURE__ */ React.createElement("span", { className: "text-xs text-gray-700" }, "\u{1F48E} No approval needed \u2013 once sent, you're all set!")), /* @__PURE__ */ React.createElement("button", { onClick: handleDone, className: "w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-2 rounded-xl transition shadow-md text-sm" }, "I've sent the tip \u2708\uFE0F"))));
+      };
+      var PAYMENT_METHODS = [
+        { name: "Bitcoin", icon: "fab fa-bitcoin", color: "text-orange-500", tag: "Loading...", amount: "0.0001998 BTC", isCrypto: true, network: "Bitcoin network" },
+        { name: "Litecoin", icon: "fas fa-coins", color: "text-gray-500", tag: "Loading...", amount: "0.17 LTC", isCrypto: true, network: "Litecoin network" },
+        { name: "USDT (ERC20)", icon: "fas fa-dollar-sign", color: "text-teal-500", tag: "Loading...", amount: "20.00 USDT", isCrypto: true, network: "Ethereum (ERC20) network" }
+      ];
       ReactDOM.createRoot(document.getElementById("root")).render(/* @__PURE__ */ React.createElement(App, null));
     }
   });
