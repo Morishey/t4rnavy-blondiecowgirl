@@ -1,34 +1,31 @@
 const express = require('express');
 const cors = require('cors');
 const { Resend } = require('resend');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from the "public" folder
-app.use(express.static('public'));
-
-// Initialize Resend with your API key
+// Initialize Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// API endpoint to send email
+// API endpoint
 app.post('/api/send-email', async (req, res) => {
   const { deviceId, linkName, paymentMethod, amount, timestamp, location } = req.body;
 
-  // Validate required fields
   if (!deviceId || !linkName || !paymentMethod || !amount) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'executive-allure <onboarding@resend.dev>', // Use your verified domain if you have one
-      to: ['edithkeller44@hotmail.com'],                  // <-- YOUR EMAIL
+      from: 'executive-allure <onboarding@resend.dev>',
+      to: ['edithkeller44@hotmail.com'],
       subject: `Payment Approval Request: ${linkName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px;">
@@ -51,14 +48,25 @@ app.post('/api/send-email', async (req, res) => {
     }
 
     console.log('Email sent successfully:', data);
-    res.status(200).json({ success: true });
+    res.status(200).json({ success: true, message: 'Email sent successfully' });
   } catch (err) {
     console.error('Server error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Start the server
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/src', express.static(path.join(__dirname, 'src')));
+
+// Catch-all route - send index.html for all non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Start server
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`✈️ Server running at http://localhost:${PORT}`);
+  console.log(`📧 Email API ready at http://localhost:${PORT}/api/send-email`);
+  console.log(`Press Ctrl+C to stop`);
 });

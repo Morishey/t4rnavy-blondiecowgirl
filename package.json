@@ -1,25 +1,23 @@
 {
-
-
-
-
-
-  "name": "executive-allure",
+  "name": "t4rnavy-blondiecowgirl",
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "esbuild src/app.js --bundle --outfile=public/app.js --format=iife --external:react --external:react-dom --loader:.js=jsx --jsx-factory=React.createElement --jsx-fragment=React.Fragment"
   },
-  "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1",
+    "express": "^4.21.0",
     "resend": "^6.10.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
   }
 }
