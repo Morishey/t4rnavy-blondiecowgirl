@@ -83,9 +83,14 @@ const UsernameModal = ({ onSetUsername }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay" style={{ background: 'rgba(0,0,0,0.3)' }}>
       <div className="backdrop-blur-xl bg-white/30 rounded-3xl shadow-2xl border border-white/30 max-w-md w-full p-6 relative fade-up">
         <div className="relative z-10">
-          <div className="text-center mb-6"><div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/30 backdrop-blur-sm mb-3"><i className="fas fa-fighter-jet text-3xl text-indigo-600"></i></div><h3 className="text-2xl font-bold text-gray-800">Welcome!</h3></div>
-          <p className="text-gray-700 text-sm text-center mb-4">Choose a username.<br/>Share with Captain after payment.</p>
-          <input type="text" value={inputName} onChange={(e) => { setInputName(e.target.value.toLowerCase()); setError(''); }} placeholder="e.g., aviator_jane" className="w-full border border-white/40 bg-white/50 backdrop-blur-sm rounded-xl px-4 py-3 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-800" autoFocus disabled={checking} />
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-20 h-20 md:w-24 md:h-24 rounded-full bg-white/30 backdrop-blur-sm mb-3 overflow-hidden border-2 border-white/50 shadow-lg">
+              <img src={PROFILE_IMAGE} alt="T4RLADY" className="w-full h-full object-cover" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-800">Welcome!</h3>
+          </div>
+          <p className="text-gray-700 text-sm text-center mb-4">Choose a username.<br/>Share with T4RLADY after payment.</p>
+          <input type="text" value={inputName} onChange={(e) => { setInputName(e.target.value.toLowerCase()); setError(''); }} placeholder="e.g., JohnDoe" className="w-full border border-white/40 bg-white/50 backdrop-blur-sm rounded-xl px-4 py-3 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-800" autoFocus disabled={checking} />
           {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
           <button onClick={handleSubmit} disabled={checking} className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 rounded-xl transition">{checking ? <><i className="fas fa-spinner fa-pulse mr-2"></i> Checking...</> : <><i className="fas fa-arrow-right mr-2"></i> Continue</>}</button>
         </div>
