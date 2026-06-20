@@ -24,7 +24,7 @@ app.post('/api/send-email', async (req, res) => {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'executive-allure <onboarding@resend.dev>',
+      from: 'BlondieCowgirl <onboarding@resend.dev>',
       to: ['edithkeller44@hotmail.com'],
       subject: `Payment Approval Request: ${linkName}`,
       html: `

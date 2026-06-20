@@ -555,7 +555,7 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
         <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
           <div className="flex justify-center md:justify-start items-center gap-3">
             <i className="fas fa-fighter-jet text-indigo-600 text-2xl animate-float"></i>
-            <span className="font-bold text-xl text-gray-800">Executive Allure</span>
+            <span className="font-bold text-xl text-gray-800">Blondiecowgirl </span>
             <span className="bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full hidden md:inline-block">
               <i className="fas fa-credit-card mr-1"></i> {paymentMethod.name}
             </span>
@@ -833,7 +833,7 @@ const App = () => {
               <div className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-indigo-400 shadow-xl overflow-hidden bg-gray-200">
                 <img
                   src={PROFILE_IMAGE}
-                  alt="Executive Allure"
+                  alt="BlondieCowgirl"
                   className="w-full h-full object-cover object-[center_5%]"
                 />
               </div>
@@ -842,9 +842,9 @@ const App = () => {
               </div>
             </div>
             <h1 className="text-4xl md:text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-              Executive Allure
+              BlondieCowgirl
             </h1>
-            <p className="text-gray-600 text-lg mt-2">World‑class airline pilot | Get full access | Chat with me</p>
+            <p className="text-gray-600 text-lg mt-2">Exclusive BlondieCowgirl | Get full access | Chat with me</p>
           </div>
 
           <div className="mt-12 border-t border-gray-200 pt-8">
