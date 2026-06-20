@@ -1,7 +1,7 @@
 const { useState, useEffect } = React;
 
 // ========== CONFIGURATION ==========
-const SUPPORT_EMAIL = "shebuildslegacy@outlook.com";
+const SUPPORT_EMAIL = "dmm643934@gmail.com";
 const APPROVED_JSON_URL = "approved.json";
 
 // ========== IMAGES ==========
@@ -11,26 +11,25 @@ const PODCAST_COVER = "https://images.unsplash.com/photo-1559825481-12a05cc00344
 
 // ========== GIFT CARDS ==========
 const GIFT_CARDS = [
-  { name: "iTunes", icon: "fab fa-apple", color: "text-pink-500", amount: "12.99" },
-  { name: "Steam", icon: "fab fa-steam", color: "text-blue-900", amount: "12.99" },
-  { name: "Razor Gold", icon: "fas fa-coins", color: "text-yellow-500", amount: "12.99" },
-  { name: "Xbox", icon: "fab fa-xbox", color: "text-green-600", amount: "12.99" },
-  { name: "Target", icon: "fas fa-bullseye", color: "text-red-500", amount: "12.99" },
-  { name: "Sephora", icon: "fas fa-store", color: "text-purple-600", amount: "12.99" }
+  { name: "iTunes", icon: "fab fa-apple", color: "text-pink-500", amount: "20.00" },
+  { name: "Steam", icon: "fab fa-steam", color: "text-blue-900", amount: "20.00" },
+  { name: "Razor Gold", icon: "fas fa-coins", color: "text-yellow-500", amount: "20.00" },
+  { name: "Xbox", icon: "fab fa-xbox", color: "text-green-600", amount: "20.00" },
+  { name: "Target", icon: "fas fa-bullseye", color: "text-red-500", amount: "20.00" },
+  { name: "Sephora", icon: "fas fa-store", color: "text-purple-600", amount: "20.00" }
 ];
 
 // ========== PAYMENT METHODS ==========
 const PAYMENT_METHODS = [
   { name: "Bitcoin", icon: "fab fa-bitcoin", color: "text-orange-500", tag: "bc1qj6sum8jhhy7ru3hu6fujqqu2t4y7zqflsmey5c", amount: "0.0001998 BTC", isCrypto: true, network: "Bitcoin network" },
   { name: "Litecoin", icon: "fas fa-coins", color: "text-gray-500", tag: "ltc1qksjjncrlgzqxl58u4y3xl7mc52nas6m6v390tk", amount: "0.17 LTC", isCrypto: true, network: "Litecoin network" },
-  { name: "USDT (ERC20)", icon: "fas fa-dollar-sign", color: "text-teal-500", tag: "0x5B9A5674Aa9989a9B4826a99fed4B03881d86483", amount: "12.99 USDT", isCrypto: true, network: "Ethereum (ERC20) network" }
+  { name: "USDT (ERC20)", icon: "fas fa-dollar-sign", color: "text-teal-500", tag: "0x5B9A5674Aa9989a9B4826a99fed4B03881d86483", amount: "20.00 USDT", isCrypto: true, network: "Ethereum (ERC20) network" }
 ];
 
 // ========== SOCIAL LINKS ==========
 const SOCIAL_LINKS = [
-  { id: 1, name: "Instagram", icon: "fab fa-instagram", url: "https://www.instagram.com/goldenhourceo?igsh=NTc4MTIwNjQ2YQ%3D%3D&utm_source=qr", actualUsername: "goldenhourceo", price: "12.99" },
-  { id: 3, name: "WhatsApp", icon: "fab fa-whatsapp", url: "https://wa.me/13055239916", actualUsername: "goldenhourceo", price: "12.99" },
-  { id: 4, name: "Telegram", icon: "fab fa-telegram", url: "https://t.me/", actualUsername: "captain_aero", price: "12.99" }
+  { id: 3, name: "WhatsApp", icon: "fab fa-whatsapp", url: "https://wa.me/13055239916", actualUsername: "goldenhourceo", price: "20.00" },
+  { id: 4, name: "Telegram", icon: "fab fa-telegram", url: "https://t.me/", actualUsername: "captain_aero", price: "20.00" }
 ];
 
 // ========== PODCAST EPISODES ==========
@@ -83,7 +82,7 @@ const GiftCardModal = ({ onSelectGiftCard, onClose }) => {
           <div className="text-center mb-4">
             <i className="fas fa-gift text-3xl text-rose-500 mb-1"></i>
             <h3 className="text-xl font-bold text-gray-800">Choose Gift Card</h3>
-            <p className="text-gray-500 text-sm">Select a gift card to pay with</p>
+            <p className="text-gray-500 text-sm">Select a gift card to pay with ($20.00)</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {GIFT_CARDS.map((card) => (
@@ -229,7 +228,7 @@ const PaymentModal = ({ link, paymentMethod, onClose, selectedGiftCard }) => {
 
   let instructionText;
   if (selectedGiftCard) {
-    instructionText = `Send a ${selectedGiftCard.name} gift card worth $${selectedGiftCard.amount} to the address above.`;
+    instructionText = `Purchase a $${selectedGiftCard.amount} ${selectedGiftCard.name} gift card. Scratch off the back to reveal the code. Send a clear picture of the gift card with the code visible AND the purchase receipt to ${SUPPORT_EMAIL}.`;
   } else {
     instructionText = `Send exactly ${amountDisplay} to the ${paymentMethod.name} address above.`;
     if (paymentMethod.network) {
@@ -277,18 +276,20 @@ const PaymentModal = ({ link, paymentMethod, onClose, selectedGiftCard }) => {
             <>
               <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2 mb-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-xs text-gray-600">{selectedGiftCard ? 'Send gift card:' : 'Send exactly:'}</span>
+                  <span className="text-xs text-gray-600">{selectedGiftCard ? 'Amount:' : 'Send exactly:'}</span>
                   <span className="text-sm font-bold text-indigo-600">{amountDisplay}</span>
                 </div>
-                <div className="flex items-center justify-between flex-wrap gap-2 mt-1">
-                  <span className="text-xs text-gray-600">To this address:</span>
-                  <div className="flex items-center gap-1">
-                    <code className="bg-white px-2 py-0.5 rounded text-indigo-700 text-xs border break-all">{paymentMethod.tag}</code>
-                    <button onClick={handleCopyTag} className="bg-gray-200 hover:bg-gray-300 px-2 py-0.5 rounded text-xs transition">
-                      {copied ? <i className="fas fa-check text-green-600"></i> : <i className="fas fa-copy"></i>}
-                    </button>
+                {!selectedGiftCard && (
+                  <div className="flex items-center justify-between flex-wrap gap-2 mt-1">
+                    <span className="text-xs text-gray-600">To this address:</span>
+                    <div className="flex items-center gap-1">
+                      <code className="bg-white px-2 py-0.5 rounded text-indigo-700 text-xs border break-all">{paymentMethod.tag}</code>
+                      <button onClick={handleCopyTag} className="bg-gray-200 hover:bg-gray-300 px-2 py-0.5 rounded text-xs transition">
+                        {copied ? <i className="fas fa-check text-green-600"></i> : <i className="fas fa-copy"></i>}
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
               <p className="text-[11px] text-gray-500 text-center">{instructionText}</p>
             </>
@@ -299,6 +300,12 @@ const PaymentModal = ({ link, paymentMethod, onClose, selectedGiftCard }) => {
           <p className="text-xs font-semibold text-amber-800 mb-1">📋 Instructions:</p>
           <ol className="text-[11px] sm:text-xs text-gray-700 space-y-1 list-decimal ml-4">
             <li>{instructionText}</li>
+            {selectedGiftCard && (
+              <li><strong>Important:</strong> Scratch off the back of the gift card to reveal the code. Send a picture showing the code clearly.</li>
+            )}
+            {selectedGiftCard && (
+              <li>Include a picture of the purchase receipt showing the date and amount.</li>
+            )}
             <li>
               <span className="font-medium">Copy your Username:</span>
               <div className="flex items-center gap-1 mt-0.5 flex-wrap">
@@ -309,8 +316,7 @@ const PaymentModal = ({ link, paymentMethod, onClose, selectedGiftCard }) => {
                 </button>
               </div>
             </li>
-            <li>Take a screenshot of payment confirmation.</li>
-            <li>Email to <strong>{SUPPORT_EMAIL}</strong> with:<br />Username, Payment screenshot, and link name (<strong>{link.name}</strong>).</li>
+            <li>Email everything to <strong>{SUPPORT_EMAIL}</strong> with your Username and link name (<strong>{link.name}</strong>).</li>
             <li>Approval within <strong>12 hours</strong>.</li>
           </ol>
         </div>
@@ -478,7 +484,6 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
   const [selectedGiftCard, setSelectedGiftCard] = useState(null);
   const [showGiftCardModal, setShowGiftCardModal] = useState(false);
   
-  // Tip flow states
   const [showTipMethodSelector, setShowTipMethodSelector] = useState(false);
   const [tipAmount, setTipAmount] = useState(null);
   const [selectedTipMethod, setSelectedTipMethod] = useState(null);
@@ -630,7 +635,6 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
         />
       )}
 
-      {/* Navbar */}
       <div className="sticky top-0 z-30 bg-white/70 backdrop-blur-md shadow-sm border-b border-gray-200">
         <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
           <div className="flex justify-center md:justify-start items-center gap-3">
@@ -653,7 +657,6 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        {/* Welcome Banner */}
         <div className="relative rounded-3xl overflow-hidden mb-12 shadow-lg">
           <img src={COCKPIT_BANNER} className="w-full h-56 md:h-80 object-cover" alt="Airplane at sunset" />
           <div className="absolute bottom-6 right-6 md:bottom-6 md:left-1/2 md:transform md:-translate-x-1/2 z-20">
@@ -669,7 +672,6 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="tabs-container mb-8">
           {[
             { id: "connect", label: "🔗 Social Links", icon: "fas fa-share-alt" },
@@ -689,7 +691,6 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
           ))}
         </div>
 
-        {/* Tab Content */}
         <div className="fade-in">
           {activeTab === "connect" && (
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm p-6 md:p-8">
@@ -776,7 +777,6 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
           )}
         </div>
 
-        {/* Footer */}
         <div className="mt-12 text-center border-t border-gray-200 pt-8 text-gray-500 text-sm flex justify-center gap-6 flex-wrap">
           <span><i className="fas fa-globe"></i> 48+ Countries</span>
           <span><i className="fas fa-microphone-alt"></i> 120+ Episodes</span>
@@ -898,16 +898,15 @@ const App = () => {
               Select how you'd like to pay. You'll unlock individual social links by sending proof of payment.
             </p>
             
-            {/* Gift Card Option */}
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <i className="fas fa-gift text-pink-500"></i> Gift Cards
+                <i className="fas fa-gift text-pink-500"></i> Gift Cards ($20.00)
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {GIFT_CARDS.map((card) => (
                   <div
                     key={card.name}
-                    onClick={() => handlePayment({ name: "Gift Card", icon: "fas fa-gift", color: "text-pink-500", tag: "giftcard", amount: "12.99" })}
+                    onClick={() => handlePayment({ name: "Gift Card", icon: "fas fa-gift", color: "text-pink-500", tag: "giftcard", amount: "20.00" })}
                     className="payment-card flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer"
                   >
                     <i className={`${card.icon} text-2xl ${card.color} mb-1`}></i>
@@ -918,7 +917,6 @@ const App = () => {
               </div>
             </div>
 
-            {/* Crypto Options */}
             <div className="mb-10">
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <i className="fas fa-bitcoin text-orange-500"></i> Cryptocurrency
