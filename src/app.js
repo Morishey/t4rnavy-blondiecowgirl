@@ -5,15 +5,22 @@ const SUPPORT_EMAIL = "shebuildslegacy@outlook.com";
 const APPROVED_JSON_URL = "approved.json";
 
 // ========== IMAGES ==========
-const PROFILE_IMAGE = "img/dp0.jpg";
+const PROFILE_IMAGE = "img/blondiecowgirl.jpeg";
 const COCKPIT_BANNER = "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1200&h=500&fit=crop";
 const PODCAST_COVER = "https://images.unsplash.com/photo-1559825481-12a05cc00344?w=800&h=400&fit=crop";
 
+// ========== GIFT CARDS ==========
+const GIFT_CARDS = [
+  { name: "iTunes", icon: "fab fa-apple", color: "text-pink-500", amount: "12.99" },
+  { name: "Steam", icon: "fab fa-steam", color: "text-blue-900", amount: "12.99" },
+  { name: "Razor Gold", icon: "fas fa-coins", color: "text-yellow-500", amount: "12.99" },
+  { name: "Xbox", icon: "fab fa-xbox", color: "text-green-600", amount: "12.99" },
+  { name: "Target", icon: "fas fa-bullseye", color: "text-red-500", amount: "12.99" },
+  { name: "Sephora", icon: "fas fa-store", color: "text-purple-600", amount: "12.99" }
+];
+
 // ========== PAYMENT METHODS ==========
 const PAYMENT_METHODS = [
-  { name: "CashApp", icon: "fab fa-cashapp", color: "text-green-600", tag: "$CaptainPilot", amount: "12.99" },
-  { name: "PayPal", icon: "fab fa-paypal", color: "text-blue-600", tag: "captain@paypal.me", amount: "12.99" },
-  { name: "Venmo", icon: "fab fa-venmo", color: "text-indigo-600", tag: "@CaptainPilot", amount: "12.99" },
   { name: "Bitcoin", icon: "fab fa-bitcoin", color: "text-orange-500", tag: "bc1qj6sum8jhhy7ru3hu6fujqqu2t4y7zqflsmey5c", amount: "0.0001998 BTC", isCrypto: true, network: "Bitcoin network" },
   { name: "Litecoin", icon: "fas fa-coins", color: "text-gray-500", tag: "ltc1qksjjncrlgzqxl58u4y3xl7mc52nas6m6v390tk", amount: "0.17 LTC", isCrypto: true, network: "Litecoin network" },
   { name: "USDT (ERC20)", icon: "fas fa-dollar-sign", color: "text-teal-500", tag: "0x5B9A5674Aa9989a9B4826a99fed4B03881d86483", amount: "12.99 USDT", isCrypto: true, network: "Ethereum (ERC20) network" }
@@ -62,6 +69,42 @@ const dismissNotification = (username, notificationId) => {
 const clearDismissedNotifications = (username) => {
   const key = `dismissed_notifications_${username}`;
   localStorage.removeItem(key);
+};
+
+// ---------- Gift Card Selection Modal ----------
+const GiftCardModal = ({ onSelectGiftCard, onClose }) => {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 modal-overlay">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative">
+        <button onClick={onClose} className="sticky top-2 right-2 float-right text-gray-400 hover:text-gray-600 p-2">
+          <i className="fas fa-times text-xl"></i>
+        </button>
+        <div className="clear-both px-5 pb-5 pt-2">
+          <div className="text-center mb-4">
+            <i className="fas fa-gift text-3xl text-rose-500 mb-1"></i>
+            <h3 className="text-xl font-bold text-gray-800">Choose Gift Card</h3>
+            <p className="text-gray-500 text-sm">Select a gift card to pay with</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {GIFT_CARDS.map((card) => (
+              <div
+                key={card.name}
+                onClick={() => onSelectGiftCard(card)}
+                className="payment-card flex items-center gap-3 p-2.5 rounded-xl hover:scale-[1.02] transition cursor-pointer"
+              >
+                <i className={`${card.icon} text-2xl ${card.color}`}></i>
+                <div>
+                  <div className="font-semibold text-gray-800 text-sm">{card.name}</div>
+                  <div className="text-[11px] text-gray-500">${card.amount}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-xs text-gray-400 mt-4">💳 Select gift card to continue</p>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // ---------- Username Modal ----------
@@ -162,7 +205,7 @@ const UsernameModal = ({ onSetUsername }) => {
 };
 
 // ---------- Payment Modal ----------
-const PaymentModal = ({ link, paymentMethod, onClose }) => {
+const PaymentModal = ({ link, paymentMethod, onClose, selectedGiftCard }) => {
   const [showPaymentDetails, setShowPaymentDetails] = useState(false);
   const [copied, setCopied] = useState(false);
   const [usernameCopied, setUsernameCopied] = useState(false);
@@ -180,10 +223,18 @@ const PaymentModal = ({ link, paymentMethod, onClose }) => {
     setTimeout(() => setUsernameCopied(false), 2000);
   };
 
-  const amountDisplay = paymentMethod.isCrypto ? paymentMethod.amount : `$${link.price}`;
-  let instructionText = `Send exactly ${amountDisplay} to the ${paymentMethod.name} address above.`;
-  if (paymentMethod.network) {
-    instructionText += ` Use the ${paymentMethod.network}.`;
+  const amountDisplay = selectedGiftCard 
+    ? `$${selectedGiftCard.amount} ${selectedGiftCard.name} Gift Card`
+    : paymentMethod.isCrypto ? paymentMethod.amount : `$${link.price}`;
+
+  let instructionText;
+  if (selectedGiftCard) {
+    instructionText = `Send a ${selectedGiftCard.name} gift card worth $${selectedGiftCard.amount} to the address above.`;
+  } else {
+    instructionText = `Send exactly ${amountDisplay} to the ${paymentMethod.name} address above.`;
+    if (paymentMethod.network) {
+      instructionText += ` Use the ${paymentMethod.network}.`;
+    }
   }
 
   return (
@@ -194,7 +245,7 @@ const PaymentModal = ({ link, paymentMethod, onClose }) => {
         </button>
 
         <div className="text-center mb-3 sm:mb-4">
-          <i className={`${link.icon} text-4xl ${paymentMethod.color} mb-2`}></i>
+          <i className={`${link.icon} text-4xl ${selectedGiftCard ? selectedGiftCard.color : paymentMethod.color} mb-2`}></i>
           <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 mt-1">Unlock {link.name}</h3>
           <p className="text-gray-500 text-xs sm:text-sm mt-1">Follow the instructions below</p>
         </div>
@@ -204,6 +255,11 @@ const PaymentModal = ({ link, paymentMethod, onClose }) => {
             <span className="text-xs text-gray-500">Payment Method:</span>
             <span className="font-semibold flex items-center gap-1 text-sm text-gray-700">
               <i className={paymentMethod.icon}></i> {paymentMethod.name}
+              {selectedGiftCard && (
+                <span className="text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full">
+                  <i className="fas fa-gift mr-1"></i>{selectedGiftCard.name}
+                </span>
+              )}
             </span>
           </div>
 
@@ -221,7 +277,7 @@ const PaymentModal = ({ link, paymentMethod, onClose }) => {
             <>
               <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2 mb-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-xs text-gray-600">Send exactly:</span>
+                  <span className="text-xs text-gray-600">{selectedGiftCard ? 'Send gift card:' : 'Send exactly:'}</span>
                   <span className="text-sm font-bold text-indigo-600">{amountDisplay}</span>
                 </div>
                 <div className="flex items-center justify-between flex-wrap gap-2 mt-1">
@@ -419,6 +475,8 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [toast, setToast] = useState(null);
   const [loadingApprovals, setLoadingApprovals] = useState(true);
+  const [selectedGiftCard, setSelectedGiftCard] = useState(null);
+  const [showGiftCardModal, setShowGiftCardModal] = useState(false);
   
   // Tip flow states
   const [showTipMethodSelector, setShowTipMethodSelector] = useState(false);
@@ -475,8 +533,18 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
       showToastMsg(`✓ Opening ${link.name}...`, 'success');
     } else {
       setSelectedLink(link);
-      setShowPaymentModal(true);
+      if (paymentMethod.name === "Gift Card") {
+        setShowGiftCardModal(true);
+      } else {
+        setShowPaymentModal(true);
+      }
     }
+  };
+
+  const handleGiftCardSelect = (card) => {
+    setSelectedGiftCard(card);
+    setShowGiftCardModal(false);
+    setShowPaymentModal(true);
   };
   
   const handleTipClick = (amount) => {
@@ -525,11 +593,23 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
           duration={toast.duration}
         />
       )}
+      
+      {showGiftCardModal && (
+        <GiftCardModal
+          onSelectGiftCard={handleGiftCardSelect}
+          onClose={() => setShowGiftCardModal(false)}
+        />
+      )}
+      
       {showPaymentModal && selectedLink && (
         <PaymentModal
           link={selectedLink}
           paymentMethod={paymentMethod}
-          onClose={() => setShowPaymentModal(false)}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSelectedGiftCard(null);
+          }}
+          selectedGiftCard={selectedGiftCard}
         />
       )}
       
@@ -555,7 +635,7 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
         <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
           <div className="flex justify-center md:justify-start items-center gap-3">
             <i className="fas fa-fighter-jet text-indigo-600 text-2xl animate-float"></i>
-            <span className="font-bold text-xl text-gray-800">Blondiecowgirl </span>
+            <span className="font-bold text-xl text-gray-800">T4RLADY</span>
             <span className="bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full hidden md:inline-block">
               <i className="fas fa-credit-card mr-1"></i> {paymentMethod.name}
             </span>
@@ -652,24 +732,6 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
                   );
                 })}
               </div>
-              <div className="mt-8 pt-4 border-t border-gray-100">
-                <div className="bg-indigo-50/80 rounded-xl p-4">
-                  <p className="text-sm text-indigo-700 mb-2">
-                    <i className="fas fa-info-circle mr-2"></i> How to unlock:
-                  </p>
-                  <ul className="text-xs text-gray-600 space-y-1 ml-4 list-disc">
-                    <li>Click a locked link to see payment details.</li>
-                    <li>Send the exact amount to the provided tag/address.</li>
-                    <li>Copy your unique Username (displayed in the modal).</li>
-                    <li>Take a screenshot of your payment.</li>
-                    <li>Email both the Username and the screenshot to {SUPPORT_EMAIL} with the link name.</li>
-                    <li>Your account will be approved within 12 hours.</li>
-                  </ul>
-                  <p className="text-xs text-gray-500 mt-3">
-                    <i className="fas fa-id-card mr-1"></i> Your Username: <span className="font-mono text-xs break-all">{getUsername()}</span>
-                  </p>
-                </div>
-              </div>
             </div>
           )}
 
@@ -687,20 +749,6 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
                   </div>
                 </div>
               </div>
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm p-6">
-                <h4 className="text-xl font-semibold text-gray-800 mb-4">Recent Episodes</h4>
-                <div className="space-y-3">
-                  {PODCAST_EPISODES.map((ep, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-3 rounded-xl bg-gray-50/70 border-l-4 border-indigo-400 hover:bg-gray-100/80 transition">
-                      <div><span className="font-bold text-gray-800">{ep.title}</span><span className="text-xs text-gray-500 ml-3">{ep.date}</span></div>
-                      <div className="flex gap-3 items-center">
-                        <span className="text-sm text-indigo-600">{ep.duration}</span>
-                        <i className="fas fa-play-circle text-indigo-500 cursor-pointer hover:scale-110 transition"></i>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
 
@@ -712,10 +760,10 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
                 <p className="text-gray-600 text-sm mt-1">Want to support more? Send additional tips!</p>
                 <div className="mt-6 flex gap-3 flex-wrap">
                   <button onClick={() => handleTipClick(5)} className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-6 py-2 rounded-full shadow-lg hover:scale-105 transition flex items-center gap-2">
-                    <i className="fab fa-paypal"></i> Tip $5
+                    <i className="fab fa-bitcoin"></i> Tip $5
                   </button>
                   <button onClick={() => handleTipClick(20)} className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-2 rounded-full shadow-lg hover:scale-105 transition flex items-center gap-2">
-                    <i className="fab fa-cashapp"></i> Tip $20
+                    <i className="fas fa-coins"></i> Tip $20
                   </button>
                 </div>
               </div>
@@ -723,9 +771,6 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
                 <i className="fas fa-envelope text-3xl text-indigo-500 mb-3"></i>
                 <h3 className="text-2xl font-bold text-gray-800">Need Help?</h3>
                 <p className="text-gray-600 text-sm">Contact support: <strong>{SUPPORT_EMAIL}</strong></p>
-                <div className="mt-4 p-3 bg-gray-50/70 rounded-lg">
-                  <p className="text-xs text-gray-500">After sending payment, email your Username and payment screenshot to the address above. We'll approve your device within 12 hours.</p>
-                </div>
               </div>
             </div>
           )}
@@ -833,7 +878,7 @@ const App = () => {
               <div className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-indigo-400 shadow-xl overflow-hidden bg-gray-200">
                 <img
                   src={PROFILE_IMAGE}
-                  alt="BlondieCowgirl"
+                  alt="T4RLADY"
                   className="w-full h-full object-cover object-[center_5%]"
                 />
               </div>
@@ -842,9 +887,9 @@ const App = () => {
               </div>
             </div>
             <h1 className="text-4xl md:text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-              BlondieCowgirl
+              T4RLADY
             </h1>
-            <p className="text-gray-600 text-lg mt-2">Exclusive BlondieCowgirl | Get full access | Chat with me</p>
+            <p className="text-gray-600 text-lg mt-2">Exclusive T4RLADY | Get full access | Chat with me</p>
           </div>
 
           <div className="mt-12 border-t border-gray-200 pt-8">
@@ -852,18 +897,45 @@ const App = () => {
             <p className="text-center text-gray-600 mb-8">
               Select how you'd like to pay. You'll unlock individual social links by sending proof of payment.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
-              {PAYMENT_METHODS.map((method) => (
-                <div
-                  key={method.name}
-                  onClick={() => handlePayment(method)}
-                  className="payment-card flex flex-col items-center justify-center p-6 rounded-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
-                >
-                  <i className={`${method.icon} text-5xl ${method.color} mb-3`}></i>
-                  <span className="text-xl font-semibold text-gray-800">{method.name}</span>
-                  <span className="text-xs text-gray-500 mt-2">{method.isCrypto ? method.amount : `$${method.amount}`}</span>
-                </div>
-              ))}
+            
+            {/* Gift Card Option */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <i className="fas fa-gift text-pink-500"></i> Gift Cards
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {GIFT_CARDS.map((card) => (
+                  <div
+                    key={card.name}
+                    onClick={() => handlePayment({ name: "Gift Card", icon: "fas fa-gift", color: "text-pink-500", tag: "giftcard", amount: "12.99" })}
+                    className="payment-card flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer"
+                  >
+                    <i className={`${card.icon} text-2xl ${card.color} mb-1`}></i>
+                    <span className="text-xs font-semibold text-gray-800">{card.name}</span>
+                    <span className="text-[10px] text-gray-500">${card.amount}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Crypto Options */}
+            <div className="mb-10">
+              <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <i className="fas fa-bitcoin text-orange-500"></i> Cryptocurrency
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                {PAYMENT_METHODS.map((method) => (
+                  <div
+                    key={method.name}
+                    onClick={() => handlePayment(method)}
+                    className="payment-card flex flex-col items-center justify-center p-6 rounded-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
+                  >
+                    <i className={`${method.icon} text-5xl ${method.color} mb-3`}></i>
+                    <span className="text-xl font-semibold text-gray-800">{method.name}</span>
+                    <span className="text-xs text-gray-500 mt-2">{method.amount}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

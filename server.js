@@ -68,7 +68,19 @@ module.exports = app;
 
 // Only listen if not on Vercel
 if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
+  const os = require('os');
+  
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`✈️ Server running at http://localhost:${PORT}`);
+    
+    // Print network URLs for phone access
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name]) {
+        if (net.family === 'IPv4' && !net.internal) {
+          console.log(`📱 Phone access: http://${net.address}:${PORT}`);
+        }
+      }
+    }
   });
 }
