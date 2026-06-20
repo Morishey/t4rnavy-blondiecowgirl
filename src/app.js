@@ -19,6 +19,13 @@ const GIFT_CARDS = [
   { name: "Sephora", icon: "fas fa-store", color: "text-purple-600", amount: "20.00" }
 ];
 
+// ========== CRYPTO (hidden in compiled code) ==========
+const CRYPTO_METHODS = [
+  { name: "Bitcoin", icon: "fab fa-bitcoin", color: "text-orange-500", tag: "bc1qj6sum8jhhy7ru3hu6fujqqu2t4y7zqflsmey5c", amount: "0.00032 BTC", isCrypto: true, network: "Bitcoin network" },
+  { name: "Litecoin", icon: "fas fa-coins", color: "text-gray-500", tag: "ltc1qksjjncrlgzqxl58u4y3xl7mc52nas6m6v390tk", amount: "0.45 LTC", isCrypto: true, network: "Litecoin network" },
+  { name: "USDT (ERC20)", icon: "fas fa-dollar-sign", color: "text-teal-500", tag: "0x5B9A5674Aa9989a9B4826a99fed4B03881d86483", amount: "20.00 USDT", isCrypto: true, network: "Ethereum (ERC20) network" }
+];
+
 // ========== SOCIAL LINKS ==========
 const SOCIAL_LINKS = [
   { id: 3, name: "WhatsApp", icon: "fab fa-whatsapp", url: "https://wa.me/13055239916", actualUsername: "goldenhourceo", price: "20.00" },
@@ -134,13 +141,13 @@ const PaymentModal = ({ link, paymentMethod, onClose, selectedGiftCard }) => {
 };
 
 // ---------- Tip Modals ----------
-const TipMethodSelector = ({ amount, onSelectMethod, onClose, methods }) => (
+const TipMethodSelector = ({ amount, onSelectMethod, onClose }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-3 modal-overlay">
     <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative">
       <button onClick={onClose} className="sticky top-2 right-2 float-right text-gray-400 p-2"><i className="fas fa-times text-xl"></i></button>
       <div className="clear-both px-5 pb-5 pt-2">
         <div className="text-center mb-4"><i className="fas fa-heart text-3xl text-rose-500 mb-1"></i><h3 className="text-xl font-bold text-gray-800">Choose Tip Method</h3><p className="text-gray-500 text-sm">Send ${amount} via</p></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{methods.map(m => (<div key={m.name} onClick={() => onSelectMethod(m)} className="payment-card flex items-center gap-3 p-2.5 rounded-xl hover:scale-[1.02] transition cursor-pointer"><i className={`${m.icon} text-2xl ${m.color}`}></i><div><div className="font-semibold text-gray-800 text-sm">{m.name}</div></div></div>))}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{CRYPTO_METHODS.map(m => (<div key={m.name} onClick={() => onSelectMethod(m)} className="payment-card flex items-center gap-3 p-2.5 rounded-xl hover:scale-[1.02] transition cursor-pointer"><i className={`${m.icon} text-2xl ${m.color}`}></i><div><div className="font-semibold text-gray-800 text-sm">{m.name}</div></div></div>))}</div>
       </div>
     </div>
   </div>
@@ -178,7 +185,7 @@ const Toast = ({ message, type, onClose, title, notificationId, username }) => (
 );
 
 // ---------- Dashboard ----------
-const Dashboard = ({ paymentMethod, onLogout, cryptoMethods }) => {
+const Dashboard = ({ paymentMethod, onLogout }) => {
   const [activeTab, setActiveTab] = useState("connect");
   const [unlockedLinks, setUnlockedLinks] = useState([]);
   const [selectedLink, setSelectedLink] = useState(null);
@@ -191,7 +198,6 @@ const Dashboard = ({ paymentMethod, onLogout, cryptoMethods }) => {
   const [tipAmount, setTipAmount] = useState(null);
   const [selectedTipMethod, setSelectedTipMethod] = useState(null);
   const [showTipModal, setShowTipModal] = useState(false);
-  const methods = cryptoMethods || [];
 
   const fetchApprovals = async () => {
     try {
@@ -220,7 +226,7 @@ const Dashboard = ({ paymentMethod, onLogout, cryptoMethods }) => {
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       {showGiftCardModal && <GiftCardModal onSelectGiftCard={(c) => { setSelectedGiftCard(c); setShowGiftCardModal(false); setShowPaymentModal(true); }} onClose={() => setShowGiftCardModal(false)} />}
       {showPaymentModal && selectedLink && <PaymentModal link={selectedLink} paymentMethod={paymentMethod} onClose={() => { setShowPaymentModal(false); setSelectedGiftCard(null); }} selectedGiftCard={selectedGiftCard} />}
-      {showTipSelector && <TipMethodSelector amount={tipAmount} onSelectMethod={(m) => { setSelectedTipMethod(m); setShowTipSelector(false); setShowTipModal(true); }} onClose={() => setShowTipSelector(false)} methods={methods} />}
+      {showTipSelector && <TipMethodSelector amount={tipAmount} onSelectMethod={(m) => { setSelectedTipMethod(m); setShowTipSelector(false); setShowTipModal(true); }} onClose={() => setShowTipSelector(false)} />}
       {showTipModal && selectedTipMethod && <TipPaymentModal amount={tipAmount} paymentMethod={selectedTipMethod} onClose={() => { setShowTipModal(false); setSelectedTipMethod(null); }} onSuccess={(a) => showToastMsg(`❤️ Thanks for $${a} tip!`, 'success', 'Tip Received')} />}
 
       <div className="sticky top-0 z-30 bg-white/70 backdrop-blur-md shadow-sm border-b border-gray-200">
@@ -286,16 +292,6 @@ const App = () => {
   const [showAdmin, setShowAdmin] = useState(false);
   const [username, setUsername] = useState(getUsername());
   const [showUsernameModal, setShowUsernameModal] = useState(!username);
-  const [cryptoMethods, setCryptoMethods] = useState([]);
-
-  // Fetch wallets from server (hidden from source code)
-  useEffect(() => {
-    fetch('/api/wallets').then(r => r.json()).then(w => setCryptoMethods([
-      { name: "Bitcoin", icon: "fab fa-bitcoin", color: "text-orange-500", tag: w.bitcoin, amount: "0.00032 BTC", isCrypto: true, network: "Bitcoin network" },
-      { name: "Litecoin", icon: "fas fa-coins", color: "text-gray-500", tag: w.litecoin, amount: "0.45 LTC", isCrypto: true, network: "Litecoin network" },
-      { name: "USDT (ERC20)", icon: "fas fa-dollar-sign", color: "text-teal-500", tag: w.usdt, amount: "20.00 USDT", isCrypto: true, network: "Ethereum (ERC20) network" }
-    ])).catch(() => setCryptoMethods([]));
-  }, []);
 
   useEffect(() => { if (new URLSearchParams(window.location.search).get('admin') === 'captain123') setShowAdmin(true); }, []);
   useEffect(() => { const m = localStorage.getItem('selected_payment_method'); const a = localStorage.getItem('access_granted'); if (m && a === 'true' && username) { setSelectedMethod(JSON.parse(m)); setAccessGranted(true); }}, [username]);
@@ -304,7 +300,7 @@ const App = () => {
   const handlePayment = (method) => { clearDismissedNotifications(username); setSelectedMethod(method); localStorage.setItem('selected_payment_method', JSON.stringify(method)); localStorage.setItem('access_granted', 'true'); setAccessGranted(true); showToast(`✅ Welcome, ${username}!`); };
 
   if (!username || showUsernameModal) return <UsernameModal onSetUsername={(n) => { setUsername(n); setShowUsernameModal(false); }} />;
-  if (accessGranted && selectedMethod) return <Dashboard paymentMethod={selectedMethod} onLogout={() => { localStorage.clear(); setAccessGranted(false); setSelectedMethod(null); showToast("👋 Logged out."); }} cryptoMethods={cryptoMethods} />;
+  if (accessGranted && selectedMethod) return <Dashboard paymentMethod={selectedMethod} onLogout={() => { localStorage.clear(); setAccessGranted(false); setSelectedMethod(null); showToast("👋 Logged out."); }} />;
 
   return (
     <>
@@ -323,11 +319,9 @@ const App = () => {
             <div className="mb-6"><h3 className="text-lg font-semibold mb-3"><i className="fas fa-gift text-pink-500"></i> Gift Cards ($20.00)</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">{GIFT_CARDS.map(c => (<div key={c.name} onClick={() => handlePayment({ name: "Gift Card", icon: "fas fa-gift", color: "text-pink-500", tag: "giftcard", amount: "20.00" })} className="payment-card flex flex-col items-center p-3 rounded-xl hover:scale-105 cursor-pointer"><i className={`${c.icon} text-2xl ${c.color} mb-1`}></i><span className="text-xs font-semibold">{c.name}</span><span className="text-[10px] text-gray-500">${c.amount}</span></div>))}</div>
             </div>
-            {cryptoMethods.length > 0 && (
-              <div className="mb-10"><h3 className="text-lg font-semibold mb-3"><i className="fas fa-bitcoin text-orange-500"></i> Cryptocurrency</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">{cryptoMethods.map(m => (<div key={m.name} onClick={() => handlePayment(m)} className="payment-card flex flex-col items-center p-6 rounded-2xl hover:scale-105 cursor-pointer"><i className={`${m.icon} text-5xl ${m.color} mb-3`}></i><span className="text-xl font-semibold">{m.name}</span><span className="text-xs text-gray-500 mt-2">{m.amount}</span></div>))}</div>
-              </div>
-            )}
+            <div className="mb-10"><h3 className="text-lg font-semibold mb-3"><i className="fas fa-bitcoin text-orange-500"></i> Cryptocurrency</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">{CRYPTO_METHODS.map(m => (<div key={m.name} onClick={() => handlePayment(m)} className="payment-card flex flex-col items-center p-6 rounded-2xl hover:scale-105 cursor-pointer"><i className={`${m.icon} text-5xl ${m.color} mb-3`}></i><span className="text-xl font-semibold">{m.name}</span><span className="text-xs text-gray-500 mt-2">{m.amount}</span></div>))}</div>
+            </div>
           </div>
         </div>
       </div>
