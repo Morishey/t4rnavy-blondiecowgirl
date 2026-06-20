@@ -19,11 +19,11 @@ const GIFT_CARDS = [
   { name: "Sephora", icon: "fas fa-store", color: "text-purple-600", amount: "20.00" }
 ];
 
-// ========== PAYMENT METHODS ==========
-const PAYMENT_METHODS = [
-  { name: "Bitcoin", icon: "fab fa-bitcoin", color: "text-orange-500", tag: "bc1qj6sum8jhhy7ru3hu6fujqqu2t4y7zqflsmey5c", amount: "0.0001998 BTC", isCrypto: true, network: "Bitcoin network" },
-  { name: "Litecoin", icon: "fas fa-coins", color: "text-gray-500", tag: "ltc1qksjjncrlgzqxl58u4y3xl7mc52nas6m6v390tk", amount: "0.17 LTC", isCrypto: true, network: "Litecoin network" },
-  { name: "USDT (ERC20)", icon: "fas fa-dollar-sign", color: "text-teal-500", tag: "0x5B9A5674Aa9989a9B4826a99fed4B03881d86483", amount: "20.00 USDT", isCrypto: true, network: "Ethereum (ERC20) network" }
+// ========== PAYMENT METHODS (wallets fetched from server) ==========
+const getPaymentMethods = (wallets) => [
+  { name: "Bitcoin", icon: "fab fa-bitcoin", color: "text-orange-500", tag: wallets.bitcoin || "Loading...", amount: "0.0001998 BTC", isCrypto: true, network: "Bitcoin network" },
+  { name: "Litecoin", icon: "fas fa-coins", color: "text-gray-500", tag: wallets.litecoin || "Loading...", amount: "0.17 LTC", isCrypto: true, network: "Litecoin network" },
+  { name: "USDT (ERC20)", icon: "fas fa-dollar-sign", color: "text-teal-500", tag: wallets.usdt || "Loading...", amount: "20.00 USDT", isCrypto: true, network: "Ethereum (ERC20) network" }
 ];
 
 // ========== SOCIAL LINKS ==========
@@ -335,146 +335,184 @@ const PaymentModal = ({ link, paymentMethod, onClose, selectedGiftCard }) => {
   );
 };
 
-// ========== COMPACT TIP METHOD SELECTOR ==========
-const TipMethodSelector = ({ amount, onSelectMethod, onClose }) => {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 modal-overlay">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative">
-        <button onClick={onClose} className="sticky top-2 right-2 float-right text-gray-400 hover:text-gray-600 p-2">
-          <i className="fas fa-times text-xl"></i>
-        </button>
-        <div className="clear-both px-5 pb-5 pt-2">
-          <div className="text-center mb-4">
-            <i className="fas fa-heart text-3xl text-rose-500 mb-1"></i>
-            <h3 className="text-xl font-bold text-gray-800">Choose Tip Method</h3>
-            <p className="text-gray-500 text-sm">Send ${amount} tip via</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {PAYMENT_METHODS.map((method) => (
-              <div
-                key={method.name}
-                onClick={() => onSelectMethod(method)}
-                className="payment-card flex items-center gap-3 p-2.5 rounded-xl hover:scale-[1.02] transition cursor-pointer"
-              >
-                <i className={`${method.icon} text-2xl ${method.color}`}></i>
-                <div>
-                  <div className="font-semibold text-gray-800 text-sm">{method.name}</div>
-                  <div className="text-[11px] text-gray-500">{method.isCrypto ? "Crypto" : "Digital"}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-xs text-gray-400 mt-4">No approval needed — pure support</p>
-        </div>
-      </div>
-    </div>
-  );
-};
+// ========== Main App ==========
+const App = () => {
+  const [accessGranted, setAccessGranted] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [username, setUsernameState] = useState(getUsername());
+  const [showUsernameModal, setShowUsernameModal] = useState(!username);
+  const [wallets, setWallets] = useState({ bitcoin: "", litecoin: "", usdt: "" });
+  const [paymentMethods, setPaymentMethods] = useState([]);
 
-// ========== COMPACT TIP PAYMENT MODAL ==========
-const TipPaymentModal = ({ amount, paymentMethod, onClose, onSuccess }) => {
-  const [showPaymentDetails, setShowPaymentDetails] = useState(false);
-  const [copied, setCopied] = useState(false);
-  
-  const handleCopyTag = () => {
-    navigator.clipboard.writeText(paymentMethod.tag);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  // Fetch wallets on mount
+  useEffect(() => {
+    fetch('/api/wallets')
+      .then(res => res.json())
+      .then(data => {
+        setWallets(data);
+        setPaymentMethods(getPaymentMethods(data));
+      })
+      .catch(err => console.error('Failed to fetch wallets:', err));
+  }, []);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('admin') === 'captain123') setShowAdmin(true);
+  }, []);
+
+  useEffect(() => {
+    const savedMethod = localStorage.getItem('selected_payment_method');
+    const savedAccess = localStorage.getItem('access_granted');
+    if (savedMethod && savedAccess === 'true' && username) {
+      setSelectedMethod(JSON.parse(savedMethod));
+      setAccessGranted(true);
+    }
+  }, [username]);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 2500);
   };
-  
-  const amountDisplay = paymentMethod.isCrypto ? `~$${amount} equivalent in ${paymentMethod.name}` : `$${amount}.00`;
-  let instructionText = `Send exactly ${amountDisplay} to the ${paymentMethod.name} address above.`;
-  if (paymentMethod.network && paymentMethod.isCrypto) {
-    instructionText += ` Use ${paymentMethod.network}.`;
+
+  const handlePayment = (method) => {
+    if (username) {
+      clearDismissedNotifications(username);
+    }
+    setSelectedMethod(method);
+    localStorage.setItem('selected_payment_method', JSON.stringify(method));
+    localStorage.setItem('access_granted', 'true');
+    setAccessGranted(true);
+    showToast(`✅ Welcome, ${username}! Click any social link to unlock.`);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_granted');
+    localStorage.removeItem('selected_payment_method');
+    if (selectedMethod) localStorage.removeItem(`unlocked_links_${selectedMethod.name}`);
+    setAccessGranted(false);
+    setSelectedMethod(null);
+    showToast("👋 Logged out successfully.");
+  };
+
+  const handleSetUsername = (name) => {
+    setUsernameState(name);
+    setShowUsernameModal(false);
+  };
+
+  if (!username || showUsernameModal) {
+    return <UsernameModal onSetUsername={handleSetUsername} />;
   }
-  
-  const handleDone = () => {
-    if (onSuccess) onSuccess(amount);
-    onClose();
-  };
-  
+
+  if (accessGranted && selectedMethod && paymentMethods.length > 0) {
+    return <Dashboard paymentMethod={selectedMethod} onLogout={handleLogout} paymentMethods={paymentMethods} />;
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 modal-overlay">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative">
-        <button onClick={onClose} className="sticky top-2 right-2 float-right text-gray-400 hover:text-gray-600 p-2">
-          <i className="fas fa-times text-xl"></i>
-        </button>
-        <div className="clear-both px-5 pb-5 pt-2">
-          <div className="text-center mb-3">
-            <i className={`${paymentMethod.icon} text-4xl ${paymentMethod.color} mb-1`}></i>
-            <h3 className="text-xl font-bold text-gray-800">✨ Extra Tip ✨</h3>
-            <p className="text-gray-500 text-xs">Thank you for your support!</p>
+    <>
+      {showAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative fade-up">
+            <button onClick={() => setShowAdmin(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+              <i className="fas fa-times text-xl"></i>
+            </button>
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">Admin Panel</h3>
+            <p className="text-gray-600 text-sm mb-2">Your Username:</p>
+            <div className="bg-gray-100 p-3 rounded-lg font-mono text-sm break-all mb-4">{username}</div>
+            <button
+              onClick={() => navigator.clipboard.writeText(username)}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition"
+            >
+              Copy Username
+            </button>
+            <p className="text-xs text-gray-400 mt-3">
+              To approve a user, add their username to <code>approved.json</code> with the list of unlocked links.
+            </p>
           </div>
-          
-          <div className="bg-gray-50 rounded-xl p-3 mb-3">
-            {!showPaymentDetails ? (
-              <div className="text-center py-1">
-                <button onClick={() => setShowPaymentDetails(true)} className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-1.5 rounded-full text-xs transition">
-                  Reveal Tip Details
-                </button>
-                <p className="text-[10px] text-gray-400 mt-1">Secure one‑tap reveal</p>
+        </div>
+      )}
+      <div className="min-h-screen flex items-center justify-center px-6 pt-20 pb-16 md:py-24">
+        <div className="max-w-4xl w-full glass-card p-8 md:p-12 fade-up">
+          <div className="flex flex-col items-center text-center">
+            <div className="relative mb-8 mt-4">
+              <div className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-indigo-400 shadow-xl overflow-hidden bg-gray-200">
+                <img
+                  src={PROFILE_IMAGE}
+                  alt="T4RLADY"
+                  className="w-full h-full object-cover object-[center_5%]"
+                />
               </div>
-            ) : (
-              <>
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2">
-                  <div className="flex justify-between items-center flex-wrap gap-1 mb-1">
-                    <span className="text-xs text-gray-700 font-medium">Tip amount:</span>
-                    <span className="text-base font-bold text-indigo-700">{amountDisplay}</span>
+              <div className="absolute -bottom-2 right-0 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse">
+                ✈️ OFFICIAL
+              </div>
+            </div>
+            <h1 className="text-4xl md:text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+              T4RLADY
+            </h1>
+            <p className="text-gray-600 text-lg mt-2">Exclusive T4RLADY | Get full access | Chat with me</p>
+          </div>
+
+          <div className="mt-12 border-t border-gray-200 pt-8">
+            <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Choose Your Payment Method</h2>
+            <p className="text-center text-gray-600 mb-8">
+              Select how you'd like to pay. You'll unlock individual social links by sending proof of payment.
+            </p>
+            
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <i className="fas fa-gift text-pink-500"></i> Gift Cards ($20.00)
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {GIFT_CARDS.map((card) => (
+                  <div
+                    key={card.name}
+                    onClick={() => handlePayment({ name: "Gift Card", icon: "fas fa-gift", color: "text-pink-500", tag: "giftcard", amount: "20.00" })}
+                    className="payment-card flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer"
+                  >
+                    <i className={`${card.icon} text-2xl ${card.color} mb-1`}></i>
+                    <span className="text-xs font-semibold text-gray-800">{card.name}</span>
+                    <span className="text-[10px] text-gray-500">${card.amount}</span>
                   </div>
-                  <div className="flex justify-between items-center flex-wrap gap-1">
-                    <span className="text-xs text-gray-700">Send to:</span>
-                    <div className="flex items-center gap-1">
-                      <code className="bg-white px-1.5 py-0.5 rounded text-[10px] border break-all max-w-[160px]">{paymentMethod.tag}</code>
-                      <button onClick={handleCopyTag} className="bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-[10px]">
-                        {copied ? <i className="fas fa-check text-green-600"></i> : <i className="fas fa-copy"></i>}
-                      </button>
+                ))}
+              </div>
+            </div>
+
+            {paymentMethods.length > 0 && (
+              <div className="mb-10">
+                <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <i className="fas fa-bitcoin text-orange-500"></i> Cryptocurrency
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  {paymentMethods.map((method) => (
+                    <div
+                      key={method.name}
+                      onClick={() => handlePayment(method)}
+                      className="payment-card flex flex-col items-center justify-center p-6 rounded-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
+                    >
+                      <i className={`${method.icon} text-5xl ${method.color} mb-3`}></i>
+                      <span className="text-xl font-semibold text-gray-800">{method.name}</span>
+                      <span className="text-xs text-gray-500 mt-2">{method.amount}</span>
                     </div>
-                  </div>
-                  {paymentMethod.network && paymentMethod.isCrypto && (
-                    <p className="text-[10px] text-gray-500 mt-1"><i className="fas fa-network-wired"></i> {paymentMethod.network}</p>
-                  )}
+                  ))}
                 </div>
-                <p className="text-[10px] text-gray-600 mt-2 text-center">{instructionText}</p>
-              </>
+              </div>
             )}
           </div>
-          
-          <div className="bg-green-50 border border-green-200 rounded-xl p-2 mb-3 text-center">
-            <i className="fas fa-heart text-rose-500 mr-1"></i>
-            <span className="text-xs text-gray-700">💎 No approval needed – once sent, you're all set!</span>
-          </div>
-          
-          <button onClick={handleDone} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-2 rounded-xl transition shadow-md text-sm">
-            I've sent the tip ✈️
-          </button>
         </div>
       </div>
-    </div>
+
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white shadow-lg border border-gray-200 text-gray-800 px-6 py-3 rounded-full z-50 flex items-center gap-2 text-sm">
+          <i className="fas fa-check-circle text-green-500"></i> {toastMessage}
+        </div>
+      )}
+    </>
   );
 };
 
-// ---------- Toast Notification ----------
-const Toast = ({ message, type, onClose, title, notificationId, username }) => {
-  const handleClose = () => {
-    if (notificationId && username) {
-      dismissNotification(username, notificationId);
-    }
-    onClose();
-  };
-  
-  return (
-    <div className={`fixed top-20 right-4 z-50 px-6 py-3 rounded-xl shadow-xl flex items-start gap-2 text-sm ${type === 'success' ? 'bg-green-500 text-white' : type === 'info' ? 'bg-blue-500 text-white' : 'bg-red-500 text-white'}`}>
-      <div className="flex-1">
-        {title && <div className="font-bold mb-1">{title}</div>}
-        <div>{message}</div>
-      </div>
-      <button onClick={handleClose} className="ml-2 text-white hover:text-gray-200">×</button>
-    </div>
-  );
-};
-
-// ---------- Dashboard ----------
-const Dashboard = ({ paymentMethod, onLogout }) => {
+// ========== Dashboard ==========
+const Dashboard = ({ paymentMethod, onLogout, paymentMethods }) => {
   const [activeTab, setActiveTab] = useState("connect");
   const [unlockedLinks, setUnlockedLinks] = useState([]);
   const [selectedLink, setSelectedLink] = useState(null);
@@ -623,6 +661,7 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
           amount={tipAmount}
           onSelectMethod={handleTipMethodSelected}
           onClose={closeTipModals}
+          paymentMethods={paymentMethods}
         />
       )}
       
@@ -787,166 +826,150 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
   );
 };
 
-// ---------- Main App ----------
-const App = () => {
-  const [accessGranted, setAccessGranted] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState(null);
-  const [toastMessage, setToastMessage] = useState(null);
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [username, setUsernameState] = useState(getUsername());
-  const [showUsernameModal, setShowUsernameModal] = useState(!username);
-
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('admin') === 'captain123') setShowAdmin(true);
-  }, []);
-
-  useEffect(() => {
-    const savedMethod = localStorage.getItem('selected_payment_method');
-    const savedAccess = localStorage.getItem('access_granted');
-    if (savedMethod && savedAccess === 'true' && username) {
-      setSelectedMethod(JSON.parse(savedMethod));
-      setAccessGranted(true);
+// ---------- Toast Notification ----------
+const Toast = ({ message, type, onClose, title, notificationId, username }) => {
+  const handleClose = () => {
+    if (notificationId && username) {
+      dismissNotification(username, notificationId);
     }
-  }, [username]);
-
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 2500);
+    onClose();
   };
-
-  const handlePayment = (method) => {
-    if (username) {
-      clearDismissedNotifications(username);
-    }
-    setSelectedMethod(method);
-    localStorage.setItem('selected_payment_method', JSON.stringify(method));
-    localStorage.setItem('access_granted', 'true');
-    setAccessGranted(true);
-    showToast(`✅ Welcome, ${username}! Click any social link to unlock.`);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('access_granted');
-    localStorage.removeItem('selected_payment_method');
-    if (selectedMethod) localStorage.removeItem(`unlocked_links_${selectedMethod.name}`);
-    setAccessGranted(false);
-    setSelectedMethod(null);
-    showToast("👋 Logged out successfully.");
-  };
-
-  const handleSetUsername = (name) => {
-    setUsernameState(name);
-    setShowUsernameModal(false);
-  };
-
-  if (!username || showUsernameModal) {
-    return <UsernameModal onSetUsername={handleSetUsername} />;
-  }
-
-  if (accessGranted && selectedMethod) {
-    return <Dashboard paymentMethod={selectedMethod} onLogout={handleLogout} />;
-  }
-
+  
   return (
-    <>
-      {showAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative fade-up">
-            <button onClick={() => setShowAdmin(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-              <i className="fas fa-times text-xl"></i>
-            </button>
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">Admin Panel</h3>
-            <p className="text-gray-600 text-sm mb-2">Your Username:</p>
-            <div className="bg-gray-100 p-3 rounded-lg font-mono text-sm break-all mb-4">{username}</div>
-            <button
-              onClick={() => navigator.clipboard.writeText(username)}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg transition"
-            >
-              Copy Username
-            </button>
-            <p className="text-xs text-gray-400 mt-3">
-              To approve a user, add their username to <code>approved.json</code> with the list of unlocked links.
-            </p>
-          </div>
-        </div>
-      )}
-      <div className="min-h-screen flex items-center justify-center px-6 pt-20 pb-16 md:py-24">
-        <div className="max-w-4xl w-full glass-card p-8 md:p-12 fade-up">
-          <div className="flex flex-col items-center text-center">
-            <div className="relative mb-8 mt-4">
-              <div className="w-28 h-28 md:w-40 md:h-40 rounded-full border-4 border-indigo-400 shadow-xl overflow-hidden bg-gray-200">
-                <img
-                  src={PROFILE_IMAGE}
-                  alt="T4RLADY"
-                  className="w-full h-full object-cover object-[center_5%]"
-                />
-              </div>
-              <div className="absolute -bottom-2 right-0 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse">
-                ✈️ OFFICIAL
-              </div>
-            </div>
-            <h1 className="text-4xl md:text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-              T4RLADY
-            </h1>
-            <p className="text-gray-600 text-lg mt-2">Exclusive T4RLADY | Get full access | Chat with me</p>
-          </div>
-
-          <div className="mt-12 border-t border-gray-200 pt-8">
-            <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Choose Your Payment Method</h2>
-            <p className="text-center text-gray-600 mb-8">
-              Select how you'd like to pay. You'll unlock individual social links by sending proof of payment.
-            </p>
-            
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <i className="fas fa-gift text-pink-500"></i> Gift Cards ($20.00)
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {GIFT_CARDS.map((card) => (
-                  <div
-                    key={card.name}
-                    onClick={() => handlePayment({ name: "Gift Card", icon: "fas fa-gift", color: "text-pink-500", tag: "giftcard", amount: "20.00" })}
-                    className="payment-card flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer"
-                  >
-                    <i className={`${card.icon} text-2xl ${card.color} mb-1`}></i>
-                    <span className="text-xs font-semibold text-gray-800">{card.name}</span>
-                    <span className="text-[10px] text-gray-500">${card.amount}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-10">
-              <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <i className="fas fa-bitcoin text-orange-500"></i> Cryptocurrency
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                {PAYMENT_METHODS.map((method) => (
-                  <div
-                    key={method.name}
-                    onClick={() => handlePayment(method)}
-                    className="payment-card flex flex-col items-center justify-center p-6 rounded-2xl transition-all duration-300 hover:scale-105 cursor-pointer"
-                  >
-                    <i className={`${method.icon} text-5xl ${method.color} mb-3`}></i>
-                    <span className="text-xl font-semibold text-gray-800">{method.name}</span>
-                    <span className="text-xs text-gray-500 mt-2">{method.amount}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className={`fixed top-20 right-4 z-50 px-6 py-3 rounded-xl shadow-xl flex items-start gap-2 text-sm ${type === 'success' ? 'bg-green-500 text-white' : type === 'info' ? 'bg-blue-500 text-white' : 'bg-red-500 text-white'}`}>
+      <div className="flex-1">
+        {title && <div className="font-bold mb-1">{title}</div>}
+        <div>{message}</div>
       </div>
-
-      {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white shadow-lg border border-gray-200 text-gray-800 px-6 py-3 rounded-full z-50 flex items-center gap-2 text-sm">
-          <i className="fas fa-check-circle text-green-500"></i> {toastMessage}
-        </div>
-      )}
-    </>
+      <button onClick={handleClose} className="ml-2 text-white hover:text-gray-200">×</button>
+    </div>
   );
 };
+
+// ========== COMPACT TIP METHOD SELECTOR ==========
+const TipMethodSelector = ({ amount, onSelectMethod, onClose, paymentMethods }) => {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 modal-overlay">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative">
+        <button onClick={onClose} className="sticky top-2 right-2 float-right text-gray-400 hover:text-gray-600 p-2">
+          <i className="fas fa-times text-xl"></i>
+        </button>
+        <div className="clear-both px-5 pb-5 pt-2">
+          <div className="text-center mb-4">
+            <i className="fas fa-heart text-3xl text-rose-500 mb-1"></i>
+            <h3 className="text-xl font-bold text-gray-800">Choose Tip Method</h3>
+            <p className="text-gray-500 text-sm">Send ${amount} tip via</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {(paymentMethods || PAYMENT_METHODS).map((method) => (
+              <div
+                key={method.name}
+                onClick={() => onSelectMethod(method)}
+                className="payment-card flex items-center gap-3 p-2.5 rounded-xl hover:scale-[1.02] transition cursor-pointer"
+              >
+                <i className={`${method.icon} text-2xl ${method.color}`}></i>
+                <div>
+                  <div className="font-semibold text-gray-800 text-sm">{method.name}</div>
+                  <div className="text-[11px] text-gray-500">{method.isCrypto ? "Crypto" : "Digital"}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-xs text-gray-400 mt-4">No approval needed — pure support</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ========== COMPACT TIP PAYMENT MODAL ==========
+const TipPaymentModal = ({ amount, paymentMethod, onClose, onSuccess }) => {
+  const [showPaymentDetails, setShowPaymentDetails] = useState(false);
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopyTag = () => {
+    navigator.clipboard.writeText(paymentMethod.tag);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  
+  const amountDisplay = paymentMethod.isCrypto ? `~$${amount} equivalent in ${paymentMethod.name}` : `$${amount}.00`;
+  let instructionText = `Send exactly ${amountDisplay} to the ${paymentMethod.name} address above.`;
+  if (paymentMethod.network && paymentMethod.isCrypto) {
+    instructionText += ` Use ${paymentMethod.network}.`;
+  }
+  
+  const handleDone = () => {
+    if (onSuccess) onSuccess(amount);
+    onClose();
+  };
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 modal-overlay">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto relative">
+        <button onClick={onClose} className="sticky top-2 right-2 float-right text-gray-400 hover:text-gray-600 p-2">
+          <i className="fas fa-times text-xl"></i>
+        </button>
+        <div className="clear-both px-5 pb-5 pt-2">
+          <div className="text-center mb-3">
+            <i className={`${paymentMethod.icon} text-4xl ${paymentMethod.color} mb-1`}></i>
+            <h3 className="text-xl font-bold text-gray-800">✨ Extra Tip ✨</h3>
+            <p className="text-gray-500 text-xs">Thank you for your support!</p>
+          </div>
+          
+          <div className="bg-gray-50 rounded-xl p-3 mb-3">
+            {!showPaymentDetails ? (
+              <div className="text-center py-1">
+                <button onClick={() => setShowPaymentDetails(true)} className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-1.5 rounded-full text-xs transition">
+                  Reveal Tip Details
+                </button>
+                <p className="text-[10px] text-gray-400 mt-1">Secure one‑tap reveal</p>
+              </div>
+            ) : (
+              <>
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2">
+                  <div className="flex justify-between items-center flex-wrap gap-1 mb-1">
+                    <span className="text-xs text-gray-700 font-medium">Tip amount:</span>
+                    <span className="text-base font-bold text-indigo-700">{amountDisplay}</span>
+                  </div>
+                  <div className="flex justify-between items-center flex-wrap gap-1">
+                    <span className="text-xs text-gray-700">Send to:</span>
+                    <div className="flex items-center gap-1">
+                      <code className="bg-white px-1.5 py-0.5 rounded text-[10px] border break-all max-w-[160px]">{paymentMethod.tag}</code>
+                      <button onClick={handleCopyTag} className="bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-[10px]">
+                        {copied ? <i className="fas fa-check text-green-600"></i> : <i className="fas fa-copy"></i>}
+                      </button>
+                    </div>
+                  </div>
+                  {paymentMethod.network && paymentMethod.isCrypto && (
+                    <p className="text-[10px] text-gray-500 mt-1"><i className="fas fa-network-wired"></i> {paymentMethod.network}</p>
+                  )}
+                </div>
+                <p className="text-[10px] text-gray-600 mt-2 text-center">{instructionText}</p>
+              </>
+            )}
+          </div>
+          
+          <div className="bg-green-50 border border-green-200 rounded-xl p-2 mb-3 text-center">
+            <i className="fas fa-heart text-rose-500 mr-1"></i>
+            <span className="text-xs text-gray-700">💎 No approval needed – once sent, you're all set!</span>
+          </div>
+          
+          <button onClick={handleDone} className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-2 rounded-xl transition shadow-md text-sm">
+            I've sent the tip ✈️
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Fallback for when wallets haven't loaded yet
+const PAYMENT_METHODS = [
+  { name: "Bitcoin", icon: "fab fa-bitcoin", color: "text-orange-500", tag: "Loading...", amount: "0.0001998 BTC", isCrypto: true, network: "Bitcoin network" },
+  { name: "Litecoin", icon: "fas fa-coins", color: "text-gray-500", tag: "Loading...", amount: "0.17 LTC", isCrypto: true, network: "Litecoin network" },
+  { name: "USDT (ERC20)", icon: "fas fa-dollar-sign", color: "text-teal-500", tag: "Loading...", amount: "20.00 USDT", isCrypto: true, network: "Ethereum (ERC20) network" }
+];
 
 // Render the app
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);

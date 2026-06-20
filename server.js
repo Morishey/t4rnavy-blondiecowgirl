@@ -14,6 +14,15 @@ app.use(express.json());
 // Initialize Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// API endpoint to get wallet addresses (no API key exposed)
+app.get('/api/wallets', (req, res) => {
+  res.json({
+    bitcoin: process.env.BITCOIN_WALLET,
+    litecoin: process.env.LITECOIN_WALLET,
+    usdt: process.env.USDT_WALLET
+  });
+});
+
 // API endpoint
 app.post('/api/send-email', async (req, res) => {
   const { deviceId, linkName, paymentMethod, amount, timestamp, location } = req.body;
@@ -25,7 +34,7 @@ app.post('/api/send-email', async (req, res) => {
   try {
     const { data, error } = await resend.emails.send({
       from: 'executive-allure <onboarding@resend.dev>',
-      to: ['edithkeller44@hotmail.com'],
+      to: ['dmm643934@gmail.com'],
       subject: `Payment Approval Request: ${linkName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px;">
@@ -63,17 +72,14 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Export for Vercel
 module.exports = app;
 
-// Only listen if not on Vercel
 if (process.env.NODE_ENV !== 'production') {
   const os = require('os');
   
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`✈️ Server running at http://localhost:${PORT}`);
     
-    // Print network URLs for phone access
     const nets = os.networkInterfaces();
     for (const name of Object.keys(nets)) {
       for (const net of nets[name]) {
