@@ -1,72 +1,58 @@
 // Load dotenv only locally
-try {
-  require('dotenv').config();
-} catch (e) {
-  // dotenv not available on Vercel, use process.env directly
-}
+try { require('dotenv').config(); } catch (e) {}
 
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
 const app = express();
+const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
 
 // ========== TELEGRAM LOGGER ==========
-const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-
 function sendTelegramLog(message) {
-  if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-  fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: TELEGRAM_CHAT_ID,
-      text: message,
-      parse_mode: 'HTML'
-    })
-  }).catch(() => {});
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+  
+  const text = encodeURIComponent(message.substring(0, 500));
+  const url = `https://api.telegram.org/bot${token}/sendMessage?chat_id=${chatId}&text=${text}&parse_mode=HTML`;
+  
+  require('https').get(url, (res) => {
+    res.on('data', () => {});
+  }).on('error', () => {});
 }
 
-// ========== VISITOR TRACKING MIDDLEWARE ==========
+// ========== VISITOR TRACKING ==========
 app.use((req, res, next) => {
   if (req.path === '/' || req.path === '/index.html') {
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const ua = req.headers['user-agent'] || 'Unknown';
     const time = new Date().toLocaleString();
     const country = req.headers['x-vercel-ip-country'] || 'Unknown';
-    const referer = req.headers['referer'] || 'Direct';
-
-    let device = 'Desktop';
-    if (/Mobi|Android|iPhone|iPad/i.test(ua)) device = 'Mobile';
-    if (/Tablet|iPad/i.test(ua)) device = 'Tablet';
-
-    const msg = `👁 <b>New Visitor</b>\n⏰ ${time}\n🌍 ${country}\n📱 ${device}\n🔗 ${referer}\n🖥 ${ua.substring(0, 100)}`;
-    sendTelegramLog(msg);
+    let device = /Mobi|Android|iPhone/i.test(ua) ? 'Mobile' : 'Desktop';
+    
+    sendTelegramLog(`👁 <b>New Visitor</b>\n⏰ ${time}\n🌍 ${country}\n📱 ${device}`);
   }
   next();
 });
 
-// API: Manual log from frontend
+// API log endpoint
 app.post('/api/log', (req, res) => {
-  const { action, username, linkName } = req.body;
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const { action, username, linkName } = req.body || {};
   const time = new Date().toLocaleString();
-
+  
   let emoji = '📝';
   if (action === 'payment_click') emoji = '💳';
   if (action === 'unlock_click') emoji = '🔓';
   if (action === 'link_open') emoji = '🔗';
   if (action === 'login') emoji = '🔑';
   if (action === 'logout') emoji = '🚪';
-
-  const msg = `${emoji} <b>${action}</b>\n⏰ ${time}\n👤 ${username || 'Unknown'}\n🔗 ${linkName || 'N/A'}`;
-  sendTelegramLog(msg);
-  res.json({ ok: true });
+  
+  sendTelegramLog(`${emoji} <b>${action}</b>\n⏰ ${time}\n👤 ${username || 'Unknown'}\n🔗 ${linkName || 'N/A'}`);
+  
+  res.status(200).json({ ok: true });
 });
 
 // Wallet endpoint
@@ -83,10 +69,10 @@ app.post('/api/send-email', async (req, res) => {
   try {
     const { Resend } = require('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
-    const { deviceId, linkName, paymentMethod, amount } = req.body;
+    const { deviceId, linkName, paymentMethod, amount } = req.body || {};
     
     if (!deviceId || !linkName || !paymentMethod || !amount) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Missing fields' });
     }
 
     const { error } = await resend.emails.send({
@@ -96,9 +82,8 @@ app.post('/api/send-email', async (req, res) => {
       html: `<p>Device: ${deviceId}<br>Link: ${linkName}<br>Method: ${paymentMethod}<br>Amount: $${amount}</p>`,
     });
 
-    if (error) return res.status(500).json({ error: 'Failed to send' });
+    if (error) return res.status(500).json({ error: 'Failed' });
     
-    // Log email sent to Telegram
     sendTelegramLog(`📧 <b>Payment Email Sent</b>\n🔗 ${linkName}\n💳 ${paymentMethod}\n💰 $${amount}`);
     
     res.status(200).json({ success: true });
@@ -115,11 +100,11 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-module.exports = app;
+// START SERVER - THIS WAS MISSING!
+app.listen(PORT, () => {
+  console.log(`✈️ Server running at http://localhost:${PORT}`);
+  console.log(`📱 Telegram: ${process.env.TELEGRAM_BOT_TOKEN ? 'Configured ✓' : 'NOT configured ✗'}`);
+});
 
-// Local development only
-if (require.main === module) {
-  app.listen(process.env.PORT || 3001, () => {
-    console.log('Server running on port ' + (process.env.PORT || 3001));
-  });
-}
+// Export for Vercel
+module.exports = app;
