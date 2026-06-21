@@ -4,15 +4,21 @@ const { useState, useEffect } = React;
 const SUPPORT_EMAIL = "dmm643934@gmail.com";
 const APPROVED_JSON_URL = "approved.json";
 
-// ========== IMAGES ==========
-const PROFILE_IMAGE = "img/blondiecowgirl.jpeg";
-const COCKPIT_BANNER = "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1200&h=500&fit=crop";
-const PODCAST_COVER = "https://images.unsplash.com/photo-1559825481-12a05cc00344?w=800&h=400&fit=crop";
+// Auto-detect API URL based on environment
+const getApiUrl = () => {
+    // If running on localhost, use the local API
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:3000/api';
+    }
+    // If running on Vercel/Netlify, use the deployed backend
+    // Replace with your actual backend URL
+    return 'https://your-backend-url.onrender.com/api';
+};
 
 // ========== TELEGRAM LOG HELPER ==========
 const sendLog = (action, username, linkName) => {
   try {
-    fetch('/api/log', {
+    fetch('/api/log', {  // Use relative path – works on Vercel!
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, username: username || getUsername(), linkName })

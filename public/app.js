@@ -3,12 +3,10 @@
   var { useState, useEffect } = React;
   var SUPPORT_EMAIL = "dmm643934@gmail.com";
   var APPROVED_JSON_URL = "approved.json";
-  var PROFILE_IMAGE = "img/blondiecowgirl.jpeg";
-  var COCKPIT_BANNER = "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1200&h=500&fit=crop";
-  var PODCAST_COVER = "https://images.unsplash.com/photo-1559825481-12a05cc00344?w=800&h=400&fit=crop";
   var sendLog = (action, username, linkName) => {
     try {
       fetch("/api/log", {
+        // Use relative path – works on Vercel!
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, username: username || getUsername(), linkName })
