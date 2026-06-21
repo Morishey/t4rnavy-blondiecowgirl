@@ -10,17 +10,15 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// ========== TELEGRAM LOGGER (non-blocking) ==========
+// ========== TELEGRAM LOGGER ==========
 function sendTelegramLog(message) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) return;
   
-  // Use a simple GET request that completes instantly
   const text = encodeURIComponent(message.substring(0, 500));
   const url = `https://api.telegram.org/bot${token}/sendMessage?chat_id=${chatId}&text=${text}&parse_mode=HTML&disable_notification=true`;
   
-  // Fire and completely forget - no callbacks
   try {
     const req = require('https').get(url);
     req.on('error', () => {});
@@ -39,15 +37,19 @@ app.use((req, res, next) => {
   next();
 });
 
-// API log - respond FIRST, then send Telegram
-app.post('/api/log', (req, res) => {
+// API log - handle both GET and POST
+app.all('/api/log', (req, res) => {
+  const data = req.method === 'GET' ? req.query : req.body || {};
+  const { action, username, linkName } = data;
+  
   // Respond immediately
   res.status(200).json({ ok: true });
   
-  // Then send Telegram (non-blocking)
-  const { action, username, linkName } = req.body || {};
-  const emoji = action === 'payment_click' ? '💳' : action === 'login' ? '🔑' : action === 'link_open' ? '🔗' : action === 'unlock_click' ? '🔓' : '📝';
-  sendTelegramLog(`${emoji} ${action} | ${username || '?'} | ${linkName || '?'}`);
+  // Send Telegram after response
+  if (action) {
+    const emoji = action === 'payment_click' ? '💳' : action === 'login' ? '🔑' : action === 'link_open' ? '🔗' : action === 'unlock_click' ? '🔓' : action === 'logout' ? '🚪' : '📝';
+    sendTelegramLog(`${emoji} ${action} | ${username || '?'} | ${linkName || '?'}`);
+  }
 });
 
 // Wallet endpoint
@@ -80,8 +82,6 @@ app.post('/api/send-email', async (req, res) => {
     if (error) return res.status(500).json({ error: 'Failed' });
     
     res.status(200).json({ success: true });
-    
-    // Send Telegram after response
     sendTelegramLog(`📧 Payment | ${linkName} | ${paymentMethod} | $${amount}`);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -96,12 +96,11 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Export for Vercel
 module.exports = app;
 
-// Local only
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`✈️ Server: http://localhost:${PORT}`);
+    console.log(`📱 Telegram: ${process.env.TELEGRAM_BOT_TOKEN ? 'Configured ✓' : 'NOT configured ✗'}`);
   });
 }

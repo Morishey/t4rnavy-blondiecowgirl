@@ -11,11 +11,13 @@ const PODCAST_COVER = "https://images.unsplash.com/photo-1559825481-12a05cc00344
 
 // ========== TELEGRAM LOG HELPER ==========
 const sendLog = (action, username, linkName) => {
-  fetch('/api/log', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, username: username || getUsername(), linkName })
-  }).catch(() => {});
+  try {
+    fetch('/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, username: username || getUsername(), linkName })
+    }).catch(() => {});
+  } catch (e) {}
 };
 
 // ========== GIFT CARDS ==========
