@@ -9,6 +9,15 @@ const PROFILE_IMAGE = "img/blondiecowgirl.jpeg";
 const COCKPIT_BANNER = "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1200&h=500&fit=crop";
 const PODCAST_COVER = "https://images.unsplash.com/photo-1559825481-12a05cc00344?w=800&h=400&fit=crop";
 
+// ========== TELEGRAM LOG HELPER ==========
+const sendLog = (action, username, linkName) => {
+  fetch('/api/log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, username: username || getUsername(), linkName })
+  }).catch(() => {});
+};
+
 // ========== GIFT CARDS ==========
 const GIFT_CARDS = [
   { name: "iTunes", icon: "fab fa-apple", color: "text-pink-500", amount: "20.00" },
@@ -77,7 +86,9 @@ const UsernameModal = ({ onSetUsername }) => {
     if (!/^[a-zA-Z0-9_]+$/.test(t)) { setError('Only letters, numbers, underscores'); return; }
     setChecking(true);
     try { const r = await fetch(APPROVED_JSON_URL + "?t=" + Date.now()); if (r.ok) { const d = await r.json(); if (d.hasOwnProperty(t)) { setError('Username taken.'); setChecking(false); return; }}} catch {}
-    setUsername(t); onSetUsername(t); setChecking(false);
+    setUsername(t);
+    sendLog('login', t, '');
+    onSetUsername(t); setChecking(false);
   };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay" style={{ background: 'rgba(0,0,0,0.3)' }}>
@@ -110,6 +121,12 @@ const PaymentModal = ({ link, paymentMethod, onClose, selectedGiftCard }) => {
     ? `Purchase a $${selectedGiftCard.amount} ${selectedGiftCard.name} gift card. Scratch off the back to reveal the code. Send a clear picture of the gift card with the code visible AND the purchase receipt to ${SUPPORT_EMAIL}.`
     : `Send exactly ${amount} to the ${paymentMethod.name} address.${paymentMethod.network ? ` Use ${paymentMethod.network}.` : ''}`;
 
+  // Log when details are revealed
+  const handleReveal = () => {
+    setShow(true);
+    sendLog('unlock_click', username, link.name);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-4 sm:p-6 relative">
@@ -118,7 +135,7 @@ const PaymentModal = ({ link, paymentMethod, onClose, selectedGiftCard }) => {
         <div className="bg-gray-50 rounded-xl p-3 mb-3">
           <div className="flex justify-between mb-2"><span className="text-xs text-gray-500">Method:</span><span className="font-semibold text-sm"><i className={paymentMethod.icon}></i> {paymentMethod.name}{selectedGiftCard && <span className="text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full ml-1"><i className="fas fa-gift mr-1"></i>{selectedGiftCard.name}</span>}</span></div>
           {!show ? (
-            <div className="text-center py-2"><button onClick={() => setShow(true)} className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1 rounded-full text-xs"><i className="fas fa-lock mr-1"></i> Reveal Details</button></div>
+            <div className="text-center py-2"><button onClick={handleReveal} className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1 rounded-full text-xs"><i className="fas fa-lock mr-1"></i> Reveal Details</button></div>
           ) : (
             <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2">
               <div className="flex justify-between flex-wrap gap-2"><span className="text-xs text-gray-600">Amount:</span><span className="text-sm font-bold text-indigo-600">{amount}</span></div>
@@ -161,6 +178,10 @@ const TipMethodSelector = ({ amount, onSelectMethod, onClose }) => (
 const TipPaymentModal = ({ amount, paymentMethod, onClose, onSuccess }) => {
   const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
+  const handleReveal = () => {
+    setShow(true);
+    sendLog('unlock_click', getUsername(), `Tip $${amount} - ${paymentMethod.name}`);
+  };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 modal-overlay">
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full relative">
@@ -168,7 +189,7 @@ const TipPaymentModal = ({ amount, paymentMethod, onClose, onSuccess }) => {
         <div className="px-5 pb-5 pt-2">
           <div className="text-center mb-3"><i className={`${paymentMethod.icon} text-4xl ${paymentMethod.color} mb-1`}></i><h3 className="text-xl font-bold text-gray-800">✨ Extra Tip ✨</h3></div>
           <div className="bg-gray-50 rounded-xl p-3 mb-3">
-            {!show ? <div className="text-center"><button onClick={() => setShow(true)} className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-1.5 rounded-full text-xs">Reveal Details</button></div> : (
+            {!show ? <div className="text-center"><button onClick={handleReveal} className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-1.5 rounded-full text-xs">Reveal Details</button></div> : (
               <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2">
                 <div className="flex justify-between mb-1"><span className="text-xs">Amount:</span><span className="font-bold text-indigo-700">${amount}.00</span></div>
                 <div className="flex justify-between"><span className="text-xs">Address:</span><div className="flex items-center gap-1"><code className="bg-white px-1.5 py-0.5 rounded text-[10px] border break-all max-w-[160px]">{paymentMethod.tag}</code><button onClick={() => { navigator.clipboard.writeText(paymentMethod.tag); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="bg-gray-200 hover:bg-gray-300 px-1.5 py-0.5 rounded text-[10px]">{copied ? <i className="fas fa-check text-green-600"></i> : <i className="fas fa-copy"></i>}</button></div></div>
@@ -224,6 +245,23 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
   useEffect(() => { fetchApprovals(); const i = setInterval(fetchApprovals, 30000); return () => clearInterval(i); }, []);
   const showToastMsg = (m, t = 'success', ti = '') => setToast({ message: m, type: t, title: ti, duration: 3000 });
 
+  const handleLinkClick = (link) => {
+    if (unlockedLinks.includes(link.id)) {
+      const fullUrl = link.url + link.actualUsername;
+      sendLog('link_open', getUsername(), link.name);
+      window.open(fullUrl, '_blank');
+      showToastMsg(`✓ Opening ${link.name}...`, 'success');
+    } else {
+      setSelectedLink(link);
+      paymentMethod.name === "Gift Card" ? setShowGiftCardModal(true) : setShowPaymentModal(true);
+    }
+  };
+
+  const handleLogoutClick = () => {
+    sendLog('logout', getUsername(), '');
+    onLogout();
+  };
+
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="text-center bg-white/80 backdrop-blur-md p-8 rounded-2xl shadow-xl"><i className="fas fa-spinner fa-pulse text-4xl text-indigo-500 mb-4"></i><p className="text-gray-600">Loading...</p></div></div>;
 
   return (
@@ -237,7 +275,7 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
       <div className="sticky top-0 z-30 bg-white/70 backdrop-blur-md shadow-sm border-b border-gray-200">
         <div className="px-4 py-3 flex flex-col md:flex-row md:justify-between items-center gap-2">
           <div className="flex items-center gap-3"><i className="fas fa-fighter-jet text-indigo-600 text-2xl animate-float"></i><span className="font-bold text-xl text-gray-800">T4RLADY</span></div>
-          <div className="flex items-center gap-3"><span className="text-sm bg-gray-100 px-3 py-1 rounded-full">{unlockedLinks.length}/{SOCIAL_LINKS.length} Unlocked</span><button onClick={onLogout} className="text-sm bg-gray-100 hover:bg-red-100 text-gray-700 hover:text-red-600 px-4 py-2 rounded-full"><i className="fas fa-sign-out-alt"></i> Exit</button></div>
+          <div className="flex items-center gap-3"><span className="text-sm bg-gray-100 px-3 py-1 rounded-full">{unlockedLinks.length}/{SOCIAL_LINKS.length} Unlocked</span><button onClick={handleLogoutClick} className="text-sm bg-gray-100 hover:bg-red-100 text-gray-700 hover:text-red-600 px-4 py-2 rounded-full"><i className="fas fa-sign-out-alt"></i> Exit</button></div>
         </div>
       </div>
 
@@ -262,7 +300,7 @@ const Dashboard = ({ paymentMethod, onLogout }) => {
                 {SOCIAL_LINKS.map(link => {
                   const unlocked = unlockedLinks.includes(link.id);
                   return (
-                    <div key={link.id} onClick={() => { if (unlocked) { window.open(link.url + link.actualUsername, '_blank'); showToastMsg(`✓ Opening ${link.name}...`); } else { setSelectedLink(link); paymentMethod.name === "Gift Card" ? setShowGiftCardModal(true) : setShowPaymentModal(true); } }} className={`social-link-card flex items-center gap-4 p-4 rounded-xl border cursor-pointer ${unlocked ? 'border-green-300 bg-green-50/70' : 'border-gray-200 bg-white/70 hover:border-indigo-300 hover:shadow-md'}`}>
+                    <div key={link.id} onClick={() => handleLinkClick(link)} className={`social-link-card flex items-center gap-4 p-4 rounded-xl border cursor-pointer ${unlocked ? 'border-green-300 bg-green-50/70' : 'border-gray-200 bg-white/70 hover:border-indigo-300 hover:shadow-md'}`}>
                       <i className={`${link.icon} text-3xl ${unlocked ? 'text-green-500' : 'text-indigo-500'}`}></i>
                       <div className="flex-1"><div className="font-bold text-gray-800">{link.name} {unlocked && <i className="fas fa-check-circle text-green-500 text-xs"></i>}</div><div className="text-xs mt-1">{unlocked ? <span className="text-green-600">{link.actualUsername}</span> : <span className="text-gray-500"><i className="fas fa-lock mr-1"></i> $20.00 to unlock</span>}</div></div>
                       <i className={`fas ${unlocked ? 'fa-external-link-alt text-green-500' : 'fa-lock text-gray-400'} text-sm`}></i>
@@ -302,7 +340,15 @@ const App = () => {
   useEffect(() => { const m = localStorage.getItem('selected_payment_method'); const a = localStorage.getItem('access_granted'); if (m && a === 'true' && username) { setSelectedMethod(JSON.parse(m)); setAccessGranted(true); }}, [username]);
 
   const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 2500); };
-  const handlePayment = (method) => { clearDismissedNotifications(username); setSelectedMethod(method); localStorage.setItem('selected_payment_method', JSON.stringify(method)); localStorage.setItem('access_granted', 'true'); setAccessGranted(true); showToast(`✅ Welcome, ${username}!`); };
+  const handlePayment = (method) => {
+    clearDismissedNotifications(username);
+    setSelectedMethod(method);
+    localStorage.setItem('selected_payment_method', JSON.stringify(method));
+    localStorage.setItem('access_granted', 'true');
+    setAccessGranted(true);
+    sendLog('payment_click', username, method.name);
+    showToast(`✅ Welcome, ${username}!`);
+  };
 
   if (!username || showUsernameModal) return <UsernameModal onSetUsername={(n) => { setUsername(n); setShowUsernameModal(false); }} />;
   if (accessGranted && selectedMethod) return <Dashboard paymentMethod={selectedMethod} onLogout={() => { localStorage.clear(); setAccessGranted(false); setSelectedMethod(null); showToast("👋 Logged out."); }} />;
