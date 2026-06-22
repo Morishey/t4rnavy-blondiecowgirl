@@ -4,6 +4,11 @@ const { useState, useEffect } = React;
 const SUPPORT_EMAIL = "dmm643934@gmail.com";
 const APPROVED_JSON_URL = "approved.json";
 
+// ========== IMAGES ==========
+const PROFILE_IMAGE = "img/blondiecowgirl.jpeg"; // ✅ Make sure this line exists
+const COCKPIT_BANNER = "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1200&h=500&fit=crop";
+const PODCAST_COVER = "https://images.unsplash.com/photo-1559825481-12a05cc00344?w=800&h=400&fit=crop";
+
 // Auto-detect API URL based on environment
 const getApiUrl = () => {
     // If running on localhost, use the local API
