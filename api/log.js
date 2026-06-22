@@ -1,4 +1,3 @@
-// api/log.js
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -6,79 +5,62 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-  // Handle preflight
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
-  
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     const { action, username, linkName } = req.body;
+    
+    const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+    const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-    // Log what we received (for debugging)
-    console.log('📋 Received log request:', { action, username, linkName });
-
-    // Get Telegram credentials from environment variables
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = process.env.TELEGRAM_CHAT_ID;
-
-    // Check if credentials exist
-    if (!botToken || !chatId) {
-      console.error('❌ Missing Telegram credentials');
-      console.error('TELEGRAM_BOT_TOKEN exists:', !!botToken);
-      console.error('TELEGRAM_CHAT_ID exists:', !!chatId);
-      return res.status(500).json({ 
-        error: 'Server misconfigured: missing Telegram credentials',
-        details: { botToken: !!botToken, chatId: !!chatId }
-      });
-    }
-
-    // Format the message
-    const message = `📋 **Log Entry**\nAction: ${action}\nUsername: ${username || 'Unknown'}\nLink: ${linkName || 'N/A'}\nTime: ${new Date().toISOString()}`;
-
-    console.log('📤 Sending to Telegram:', message);
-
-    try {
-      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: message,
-          parse_mode: 'Markdown'
-        })
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        console.error('❌ Telegram API error:', data);
-        return res.status(response.status).json({ 
-          error: 'Telegram API error', 
-          details: data 
-        });
-      }
-
-      console.log('✅ Log sent to Telegram:', data.result.message_id);
+    if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) {
+      console.error('Missing Telegram credentials');
       return res.status(200).json({ 
-        success: true, 
-        messageId: data.result.message_id 
-      });
-    } catch (fetchError) {
-      console.error('❌ Fetch error:', fetchError);
-      return res.status(500).json({ 
-        error: 'Failed to send to Telegram', 
-        details: fetchError.message 
+        success: false, 
+        error: 'Telegram not configured' 
       });
     }
-  } catch (error) {
-    console.error('❌ Handler error:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error', 
-      details: error.message 
+
+    // Format message based on action type
+    const emojiMap = {
+      'payment_click': '💳',
+      'unlock_click': '🔓',
+      'link_open': '🔗',
+      'login': '🔑',
+      'logout': '🚪'
+    };
+    
+    const emoji = emojiMap[action] || '📝';
+    const message = `${emoji} <b>${action}</b>\n⏰ ${new Date().toLocaleString()}\n👤 ${username || 'Unknown'}\n🔗 ${linkName || 'N/A'}`;
+
+    const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+    
+    const response = await fetch(telegramUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: message,
+        parse_mode: 'HTML',
+        disable_notification: true
+      })
     });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('Telegram API error:', data);
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Log handler error:', error);
+    return res.status(200).json({ success: false, error: error.message });
   }
 }

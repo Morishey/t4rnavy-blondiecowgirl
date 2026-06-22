@@ -3,7 +3,11 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "memory": 512,
+        "maxDuration": 10
+      }
     },
     {
       "src": "public/**",
@@ -16,8 +20,12 @@
       "dest": "server.js"
     },
     {
+      "src": "/public/(.*)",
+      "dest": "/public/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "public/$1"
+      "dest": "server.js"
     }
   ]
 }
